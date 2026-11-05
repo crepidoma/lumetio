@@ -39,7 +39,7 @@ export const theme = createTheme({
 		// ダイアログは、どこから開いても同じ位置と見出しにする。
 		Modal: Modal.extend({
 			defaultProps: { centered: true },
-			classNames: { title: "dialog-title" },
+			classNames: { title: "dialog-title", content: "dialog-content" },
 		}),
 		Popover: Popover.extend({
 			defaultProps: { shadow: "md" },

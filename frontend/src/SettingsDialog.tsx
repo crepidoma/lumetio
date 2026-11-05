@@ -79,6 +79,8 @@ export function SettingsDialog({
 			<Modal
 				stackId="settings"
 				opened={opened}
+				// Modal.Stack は一番上のダイアログの幕だけを出すが、上に重ねたときもこのダイアログの幕を残し、本体と見分けられるようにする。
+				overlayProps={{ visible: opened }}
 				onClose={() => requestLeave("close")}
 				title="設定"
 				size="min(1080px, calc(100vw - 64px))"

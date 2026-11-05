@@ -1272,6 +1272,13 @@ body {
 	font-weight: 600;
 }
 
+/* ダイアログの上にダイアログを重ねたとき、下のダイアログも見せる。何の上で操作しているかが分かるようにするため。
+   Mantine の Modal.Stack は下のダイアログを透明にするので、それを打ち消す。触れないこと (pointer-events) はそのままにする。 */
+.dialog-content[data-hidden] {
+	/* biome-ignore lint/complexity/noImportantStyles: Mantine が !important で透明にしているので、打ち消すにも !important が要る */
+	opacity: 1 !important;
+}
+
 /* 確かめるダイアログの問いかけ。見出しにせず、本文と同じ大きさで出す。 */
 .confirm-header {
 	min-height: 0;
