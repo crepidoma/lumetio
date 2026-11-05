@@ -54,7 +54,7 @@ mise exec -- wails3 build      # フロントエンドの型チェックとビ�
 PC のメモリが足りないと `go vet` と `go test` が落ちることがある。
 そのときは `-p 1` を付けて、並べて動かす数を減らす。
 
-push すると、GitHub Actions（`.github/workflows/ci.yml`）が同じものを Windows と macOS で動かす。
+PR を出すか `main` に push すると、GitHub Actions（`.github/workflows/ci.yml`）が同じものを Windows と macOS で動かす。
 ワークフローを変えたときは、GitHub で通ったかを確かめてから完了とする（手元では動かせない）。
 
 - 「テストが落ちているが本質的でない」と判断して放置しない。

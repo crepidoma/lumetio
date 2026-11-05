@@ -95,13 +95,15 @@ mise exec -- wails3 build   # bin/ に実行ファイルを作る
 ### 確かめる
 
 変更を確かめるコマンド（Go のテスト、Biome、画面のテスト、ビルド）は、[AGENTS.md](AGENTS.md) の「完了の定義」にある。
-GitHub に push すると、GitHub Actions（`.github/workflows/ci.yml`）が同じものを Windows と macOS で動かし、できた実行ファイル（macOS は `.app` を tar にまとめたもの）を Artifacts に置く。
+GitHub で PR を出すか `main` に push すると、GitHub Actions（`.github/workflows/ci.yml`）が同じものを Windows と macOS で動かし、できた実行ファイル（macOS は `.app` を入れた dmg）を Artifacts に置く。
 
-macOS の `.app` には、Apple の正式な署名をしていない。
+macOS 版は Apple シリコン用だけを作る。
+dmg を開き、`lumetio.app` を「アプリケーション」へドラッグして入れる。
+`.app` には Apple の正式な署名をしていない。
 初めて開くときに「開発元を確認できない」と出たら、「システム設定」の「プライバシーとセキュリティ」で「このまま開く」を押すか、次のコマンドでダウンロードしたしるしを外す。
 
 ```sh
-xattr -dr com.apple.quarantine lumetio.app
+xattr -dr com.apple.quarantine /Applications/lumetio.app
 ```
 
 ### 構成
