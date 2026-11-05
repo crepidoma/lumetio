@@ -90,7 +90,7 @@ claude mcp add lumetio -- C:\Tools\lumetio\lumetio.exe mcp
 - Wails v3 の CLI をインストールします。
 
   ```sh
-  mise exec -- go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
+  mise exec -- go install github.com/wailsapp/wails/v3/cmd/wails3@v3.1.0
   ```
 
 - 画面のテストで使うブラウザを、最初に 1 回だけインストールします。
