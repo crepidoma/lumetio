@@ -18,6 +18,20 @@ Windows と macOS で動かす（macOS は未検証）。
 
 決まりの詳細は [設計書](documents/design.md)、テンプレートの書き方は [テンプレートリファレンス](documents/template-reference.md) にある。
 
+## 入れる
+
+[Releases](https://github.com/crepidoma/lumetio/releases) から、OS に合ったファイルをダウンロードする。
+どちらにも、Microsoft や Apple の正式な署名はしていない。
+
+- **Windows:** `lumetio-<版>-windows-x64.exe` を好きな場所に置いて開く。「Windows によって PC が保護されました」と出たら、「詳細情報」を押してから「実行」を押す。
+- **macOS:** Apple シリコン用だけを作っている。`lumetio-<版>-macos-arm64.dmg` を開き、`lumetio.app` を「アプリケーション」へドラッグして入れる。初めて開くときに「開発元を確認できない」と出たら、「システム設定」の「プライバシーとセキュリティ」で「このまま開く」を押すか、次のコマンドでダウンロードしたしるしを外す。
+
+  ```sh
+  xattr -dr com.apple.quarantine /Applications/lumetio.app
+  ```
+
+ファイルが壊れていないかは、一緒に置いた `SHA256SUMS.txt` と見比べて確かめられる。
+
 ## ファイルの置き場所
 
 | もの | Windows | macOS |
@@ -96,15 +110,23 @@ mise exec -- wails3 build   # bin/ に実行ファイルを作る
 
 変更を確かめるコマンド（Go のテスト、Biome、画面のテスト、ビルド）は、[AGENTS.md](AGENTS.md) の「完了の定義」にある。
 GitHub で PR を出すか `main` に push すると、GitHub Actions（`.github/workflows/ci.yml`）が同じものを Windows と macOS で動かし、できた実行ファイル（macOS は `.app` を入れた dmg）を Artifacts に置く。
+開き方は「入れる」と同じ。
 
-macOS 版は Apple シリコン用だけを作る。
-dmg を開き、`lumetio.app` を「アプリケーション」へドラッグして入れる。
-`.app` には Apple の正式な署名をしていない。
-初めて開くときに「開発元を確認できない」と出たら、「システム設定」の「プライバシーとセキュリティ」で「このまま開く」を押すか、次のコマンドでダウンロードしたしるしを外す。
+### リリース
 
-```sh
-xattr -dr com.apple.quarantine /Applications/lumetio.app
-```
+1. 版を上げる PR を出して取り込む。版は次のすべてに書く（`wails3 update build-assets` は他の値も初期値で上書きするので使わない）。
+   - `build/config.yml` の `version`
+   - `build/darwin/Info.plist` と `build/darwin/Info.dev.plist` の `CFBundleVersion` と `CFBundleShortVersionString`
+   - `build/windows/info.json` の `file_version` と `ProductVersion`
+2. 取り込んだ `main` のコミットにタグを付けて push する。
+
+   ```sh
+   git tag v0.2.0
+   git push origin v0.2.0
+   ```
+
+3. GitHub Actions（`.github/workflows/release.yml`）が、タグとアプリの版が同じかを確かめ、CI と同じ確かめをしてから、下書きのリリースを作る。
+4. 下書きの中身を見て、GitHub の画面で公開する。
 
 ### 構成
 

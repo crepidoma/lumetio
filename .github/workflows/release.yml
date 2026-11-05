@@ -1,0 +1,68 @@
+# v で始まるタグを push したら、CI と同じ確かめをしてから、下書きのリリースを作る。
+# 公開は、中身を見てから GitHub の画面で行う。タグを付け間違えても、利用者に届く前に止められるようにするため。
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # 版はタグと、アプリに埋め込むファイルの両方に書く。ずれたまま配らないよう、すべて同じかを確かめる。
+      - name: タグとアプリの版が同じか
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          failed=0
+          check() {
+            if ! grep -qF "$2" "$1"; then
+              echo "::error file=$1::版が $version になっていない"
+              failed=1
+            fi
+          }
+          check build/config.yml "version: \"$version\""
+          check build/darwin/Info.plist "<string>$version</string>"
+          check build/darwin/Info.dev.plist "<string>$version</string>"
+          check build/windows/info.json "\"file_version\": \"$version\""
+          check build/windows/info.json "\"ProductVersion\": \"$version\""
+          exit "$failed"
+
+  check:
+    needs: version
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      # ファイル名に版と OS を入れ、どの版のどれかを名前だけで分かるようにする。
+      - name: 配るファイルをまとめる
+        run: |
+          mkdir dist
+          cp artifacts/lumetio-Windows/lumetio.exe "dist/lumetio-$GITHUB_REF_NAME-windows-x64.exe"
+          cp artifacts/lumetio-macOS/*.dmg "dist/lumetio-$GITHUB_REF_NAME-macos-arm64.dmg"
+          (cd dist && sha256sum -- * > SHA256SUMS.txt)
+
+      - name: 下書きのリリースを作る
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft \
+            --verify-tag \
+            --title "lumetio $GITHUB_REF_NAME" \
+            --generate-notes \
+            --notes "macOS 版は Apple の署名をしていない。入れ方は README の「入れる」にある。"
