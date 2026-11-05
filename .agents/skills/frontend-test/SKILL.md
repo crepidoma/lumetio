@@ -73,7 +73,7 @@ beforeEach(() => {
 - 落ちたときの画面の写しが `frontend/.vitest/attachments/failure-screenshots/` に残る（Git には入れない）。Read で開いて見る。
 - 原因が分からないときは、部品に一時的に `console.log` を入れて動かすと、出力がテストの結果に出る。**調べ終わったら必ず消す。**
 - 片方のブラウザだけで落ちるときは、描くのを待たずに次の操作をしていないかを疑う。WebKit は遅れやすい。
-- 初めて動かすとき、途中で依存の事前バンドルが走って `Vitest failed to find the runner` で落ちることがある。もう一度動かせば通る。続くようなら `vitest.config.ts` の `optimizeDeps.include` に入れる。
+- `optimized dependencies changed. reloading` と出たあと、`Vitest failed to find the runner` や `did not become ready` で落ちることがある。テストの途中で見つかった依存を、Vite が事前バンドルし直したため。出力の `dependencies optimized:` に並んだ依存を、`vitest.config.ts` の `optimizeDeps.include` に足す。手元ではキャッシュが残っていて起きないので、`frontend/node_modules/.vite` を消してから動かして確かめる。
 
 ## テストの名前と値
 

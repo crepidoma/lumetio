@@ -40,6 +40,9 @@ export default defineConfig({
 			},
 			{
 				extends: true,
+				// テストの途中で依存が見つかると、Vite が事前バンドルをやり直してテストの画面を読み直し、動いていたテストが落ちる。
+				// キャッシュのない CI では毎回起きるので、始めにテストのファイルを調べたときには見つからない依存を、先に挙げておく。
+				optimizeDeps: { include: ["@mantine/hooks", "react-dom/client"] },
 				test: {
 					name: "browser",
 					include: ["src/**/*.browser.test.tsx"],
