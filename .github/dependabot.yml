@@ -1,0 +1,27 @@
+# 依存の更新を PR で受け取り、CI で確かめてから取り込む。
+# 細かい更新ごとに PR が並ぶと見きれないので、種類ごとに 1 つの PR にまとめ、週に 1 回にする。
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      go:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    groups:
+      frontend:
+        patterns: ["*"]

@@ -54,7 +54,7 @@ mise exec -- wails3 build      # フロントエンドの型チェックとビ�
 PC のメモリが足りないと `go vet` と `go test` が落ちることがある。
 そのときは `-p 1` を付けて、並べて動かす数を減らす。
 
-push すると、GitHub Actions（`.github/workflows/ci.yml`）が同じものを Windows と macOS で動かす。
+PR を出すか `main` に push すると、GitHub Actions（`.github/workflows/ci.yml`）が同じものを Windows と macOS で動かす。
 ワークフローを変えたときは、GitHub で通ったかを確かめてから完了とする（手元では動かせない）。
 
 - 「テストが落ちているが本質的でない」と判断して放置しない。
@@ -176,6 +176,7 @@ push すると、GitHub Actions（`.github/workflows/ci.yml`）が同じもの�
 - コミットメッセージは日本語で 1 行、「〜した」の形で書く（例: `時間の書き方の解釈を追加した`）。
   何をしたかだけを書き、理由や補足を括弧などで足さない。
   ただし依存を足したコミットは、足した理由も同じ 1 行に書く（例: `YAMLの読み書きのためにyaml/v3を足した`）。
+  Dependabot が作る依存の更新の PR は、Dependabot の書き方（英語）のままでよい。
 - **本文もトレーラーも付けない。**
   `Co-Authored-By` などの署名系トレーラーを付けない（`.claude/settings.json` の `attribution` を空にしてある）。
 - `git add` はパスを指定する。

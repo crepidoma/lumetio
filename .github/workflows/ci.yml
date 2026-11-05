@@ -2,8 +2,11 @@
 # 画面は Windows では WebView2、macOS では WKWebView で動くので、どちらの OS でもビルドして確かめる。
 name: CI
 
+# 作業用のブランチは PR で確かめる。push でも動かすと、同じコミットを二重に確かめることになる。
 on:
+  pull_request:
   push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -81,16 +84,14 @@ jobs:
       - name: 画面のテスト
         run: mise exec -- pnpm --dir frontend test
 
-      # macOS では .app にまとめる。署名はその PC だけで通るもの (ad hoc) で、配布用の署名はしない。
-      # 置き場はファイルの実行の権限を残さないので、tar にまとめて権限を残す。
+      # macOS では .app を dmg にまとめる。dmg はファイルの実行の権限も残す。
+      # 署名はその PC だけで通るもの (ad hoc) で、配布用の署名はしない。作るのは Apple シリコン用だけ。
       - name: macOS のアプリにまとめる
         if: runner.os == 'macOS'
-        run: |
-          mise exec -- wails3 package
-          tar -czf lumetio-macos.tar.gz -C bin lumetio.app
+        run: mise exec -- wails3 task darwin:package:dmg
 
       - uses: actions/upload-artifact@v7
         with:
           name: lumetio-${{ runner.os }}
-          path: ${{ runner.os == 'macOS' && 'lumetio-macos.tar.gz' || 'bin/lumetio.exe' }}
+          path: ${{ runner.os == 'macOS' && 'bin/*.dmg' || 'bin/lumetio.exe' }}
           if-no-files-found: error

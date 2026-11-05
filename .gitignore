@@ -7,3 +7,5 @@ frontend/.vitest
 build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
 .claude/settings.local.json
 CLAUDE.local.md
+# macOS 26 のアイコン。Mac でビルドするたびに build/appicon.icon から作る (Xcode 26 の actool が要るので、Windows では作れない)。
+build/darwin/Assets.car
