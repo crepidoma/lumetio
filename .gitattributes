@@ -1,0 +1,2 @@
+# Windows でも LF で取り出す。gofmt と Biome は LF を前提にするので、CRLF になると整形の確かめが落ちるため。
+* text=auto eol=lf
