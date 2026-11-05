@@ -1,5 +1,13 @@
-import { Button, Group, Modal } from "@mantine/core";
-import { type ReactNode, useId } from "react";
+import { Button, Group, Modal, ModalStackContext } from "@mantine/core";
+import { type ReactNode, use, useId } from "react";
+
+// useStackedOverlay は、Modal.Stack の中で別のダイアログの上に重ねるときの幕の設定。
+// 下のダイアログも自分の幕を出したままにする (Modal.Stack に入れる側で overlayProps の visible を渡す) ので、
+// 重ねる側の幕は薄くする。本体は 2 枚分暗く、下のダイアログは 1 枚分だけ暗くなり、本体に溶け込まずに見分けられる。
+// Modal.Stack の外で開くときは、いつもの幕にする。
+export function useStackedOverlay() {
+	return use(ModalStackContext) ? { backgroundOpacity: 0.25 } : undefined;
+}
 
 // ConfirmModal は、操作の前に確かめるダイアログ。右下に「キャンセル」と続ける操作を並べる。
 // 問いかけ (title) は見出しにせず、本文と同じ大きさの文で出す。短い問いかけだけのダイアログで、文が浮いて見えないため。
@@ -21,12 +29,14 @@ export function ConfirmModal({
 	actions: ReactNode;
 }) {
 	const stackId = useId();
+	const overlayProps = useStackedOverlay();
 	return (
 		<Modal
 			opened={opened}
 			onClose={onCancel}
 			title={title}
 			stackId={stackId}
+			overlayProps={overlayProps}
 			size={420}
 			padding="lg"
 			withCloseButton={false}

@@ -107,6 +107,8 @@ export function NoteDefsDialog({
 			<Modal
 				stackId="notedefs"
 				opened={opened}
+				// Modal.Stack は一番上のダイアログの幕だけを出すが、上に重ねたときもこのダイアログの幕を残し、本体と見分けられるようにする。
+				overlayProps={{ visible: opened }}
 				onClose={requestClose}
 				title="メモ欄"
 				size="lg"

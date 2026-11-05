@@ -10,12 +10,13 @@ import {
 	Text,
 	TextInput,
 } from "@mantine/core";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import {
 	type ProjectRow,
 	Service,
 } from "../bindings/github.com/crepidoma/lumetio/internal/gui";
 import { call, showInputError } from "./api";
+import { useStackedOverlay } from "./ConfirmModal";
 import { DateField } from "./DateField";
 import { AddRowButton, EditTable } from "./EditTable";
 import { reorderShown } from "./project";
@@ -138,18 +139,16 @@ export function ProjectsSection({ onDirty, onSaved, reload }: SectionProps) {
 					)
 				}
 			/>
-			{csv && (
-				<ImportDialog
-					csv={csv}
-					current={t.rows}
-					onImported={(next) => {
-						t.replace(next);
-						setCsv(null);
-					}}
-					onClose={() => setCsv(null)}
-					reload={reload}
-				/>
-			)}
+			<ImportDialog
+				csv={csv}
+				current={t.rows}
+				onImported={(next) => {
+					t.replace(next);
+					setCsv(null);
+				}}
+				onClose={() => setCsv(null)}
+				reload={reload}
+			/>
 		</div>
 	);
 }
@@ -167,19 +166,41 @@ const dateFormats = [
 // unused は、名前や日付の列を使わないときの選択肢の値。
 const unused = "-1";
 
+type ImportProps = {
+	current: ProjectRow[];
+	onImported: (rows: ProjectRow[]) => void;
+	onClose: () => void;
+	reload: () => void;
+};
+
+// ImportDialog は、読んだ CSV からプロジェクトを取り込むダイアログ。csv が null なら閉じている。
+// 設定のダイアログの上に開くので、同じ Modal.Stack に入って重なりの順と Esc を受ける順を決めてもらう。
+// Modal.Stack は閉じたことを opened で知るので、閉じるときも Modal は外さずに opened を false にする。
+// 外すと、閉じたはずのこのダイアログが一番上に残り、設定のダイアログが隠れたままになる。
 function ImportDialog({
+	csv,
+	...props
+}: ImportProps & { csv: string[][] | null }) {
+	return (
+		<Modal
+			opened={csv !== null}
+			onClose={props.onClose}
+			title="CSV から取り込む"
+			stackId={useId()}
+			overlayProps={useStackedOverlay()}
+		>
+			{csv && <ImportForm csv={csv} {...props} />}
+		</Modal>
+	);
+}
+
+function ImportForm({
 	csv,
 	current,
 	onImported,
 	onClose,
 	reload,
-}: {
-	csv: string[][];
-	current: ProjectRow[];
-	onImported: (rows: ProjectRow[]) => void;
-	onClose: () => void;
-	reload: () => void;
-}) {
+}: ImportProps & { csv: string[][] }) {
 	const width = Math.max(0, ...csv.map((r) => r.length));
 	const [skipHeader, setSkipHeader] = useState(true);
 	const [code, setCode] = useState("0");
@@ -223,70 +244,68 @@ function ImportDialog({
 	};
 
 	return (
-		<Modal opened onClose={onClose} title="CSV から取り込む">
-			<Stack gap="sm">
-				<Checkbox
-					label="1 行目は見出し"
-					checked={skipHeader}
-					onChange={(e) => setSkipHeader(e.currentTarget.checked)}
-				/>
+		<Stack gap="sm">
+			<Checkbox
+				label="1 行目は見出し"
+				checked={skipHeader}
+				onChange={(e) => setSkipHeader(e.currentTarget.checked)}
+			/>
+			<Select
+				label="コードの列"
+				data={columns}
+				value={code}
+				allowDeselect={false}
+				onChange={(v) => v && setCode(v)}
+			/>
+			<Select
+				label="名前の列"
+				data={optional}
+				value={name}
+				allowDeselect={false}
+				onChange={(v) => v && setName(v)}
+			/>
+			<Group gap="xs" wrap="nowrap" grow>
 				<Select
-					label="コードの列"
-					data={columns}
-					value={code}
-					allowDeselect={false}
-					onChange={(v) => v && setCode(v)}
-				/>
-				<Select
-					label="名前の列"
+					label="開始日の列"
 					data={optional}
-					value={name}
+					value={start}
 					allowDeselect={false}
-					onChange={(v) => v && setName(v)}
+					onChange={(v) => v && setStart(v)}
 				/>
-				<Group gap="xs" wrap="nowrap" grow>
-					<Select
-						label="開始日の列"
-						data={optional}
-						value={start}
-						allowDeselect={false}
-						onChange={(v) => v && setStart(v)}
-					/>
-					<Select
-						label="期限の列"
-						data={optional}
-						value={until}
-						allowDeselect={false}
-						onChange={(v) => v && setUntil(v)}
-					/>
-				</Group>
-				<Autocomplete
-					label="日付の書式"
-					data={dateFormats}
-					value={format}
-					disabled={start === unused && until === unused}
-					onChange={setFormat}
+				<Select
+					label="期限の列"
+					data={optional}
+					value={until}
+					allowDeselect={false}
+					onChange={(v) => v && setUntil(v)}
 				/>
-				<SegmentedControl
-					value={mode}
-					onChange={setMode}
-					data={[
-						{ value: "add", label: "今の一覧に足す" },
-						{ value: "replace", label: "一覧ごと置き換える" },
-					]}
-				/>
-				{error && (
-					<Text c="red" size="sm">
-						{error}
-					</Text>
-				)}
-				<Group justify="flex-end" gap="xs">
-					<Button variant="default" onClick={onClose}>
-						キャンセル
-					</Button>
-					<Button onClick={run}>取り込む</Button>
-				</Group>
-			</Stack>
-		</Modal>
+			</Group>
+			<Autocomplete
+				label="日付の書式"
+				data={dateFormats}
+				value={format}
+				disabled={start === unused && until === unused}
+				onChange={setFormat}
+			/>
+			<SegmentedControl
+				value={mode}
+				onChange={setMode}
+				data={[
+					{ value: "add", label: "今の一覧に足す" },
+					{ value: "replace", label: "一覧ごと置き換える" },
+				]}
+			/>
+			{error && (
+				<Text c="red" size="sm">
+					{error}
+				</Text>
+			)}
+			<Group justify="flex-end" gap="xs">
+				<Button variant="default" onClick={onClose}>
+					キャンセル
+				</Button>
+				<Button onClick={run}>取り込む</Button>
+			</Group>
+		</Stack>
 	);
 }

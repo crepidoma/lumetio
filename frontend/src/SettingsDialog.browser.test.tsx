@@ -14,6 +14,9 @@ vi.mock("../bindings/github.com/crepidoma/lumetio/internal/gui", () => ({
 		PreviewDurationFormat: vi.fn(),
 		SaveDurationFormat: vi.fn(),
 		Templates: vi.fn(),
+		ProjectRows: vi.fn(),
+		ChooseCSV: vi.fn(),
+		ReadCSV: vi.fn(),
 	},
 }));
 
@@ -30,6 +33,12 @@ beforeEach(() => {
 	vi.mocked(Service.DefaultDurationFormat).mockResolvedValue("h:mm");
 	vi.mocked(Service.PreviewDurationFormat).mockResolvedValue([]);
 	vi.mocked(Service.SaveDurationFormat).mockReset();
+	vi.mocked(Service.ProjectRows).mockResolvedValue([]);
+	vi.mocked(Service.ChooseCSV).mockResolvedValue("D:/projects.csv");
+	vi.mocked(Service.ReadCSV).mockResolvedValue([
+		["code", "name"],
+		["P-1", "試作"],
+	]);
 	vi.mocked(Service.Templates).mockResolvedValue({
 		entries: [
 			{
@@ -171,4 +180,82 @@ test("保存が入力の誤りでも衝突でもなく失敗したら、読み�
 	await field.fill("hh:mm");
 	await screen.getByRole("button", { name: "保存" }).click();
 	await vi.waitFor(() => expect(reload).toHaveBeenCalled());
+});
+
+async function openImport(onClose: () => void = () => {}) {
+	const screen = await renderApp(
+		<SettingsDialog
+			date="2026-11-05"
+			opened
+			onClose={onClose}
+			onLocationsChanged={() => {}}
+			onOutputsChanged={() => {}}
+			reload={() => {}}
+		/>,
+	);
+	await screen.getByRole("tab", { name: "プロジェクト" }).click();
+	await screen.getByRole("button", { name: "CSV から取り込む" }).click();
+	const dialog = screen.getByRole("dialog", { name: "CSV から取り込む" });
+	await expect.element(dialog).toBeVisible();
+	return { screen, dialog };
+}
+
+test("CSV から取り込むダイアログは、設定の上に出る", async () => {
+	const { dialog } = await openImport();
+	const box = dialog.element().getBoundingClientRect();
+	const top = document.elementFromPoint(
+		box.left + box.width / 2,
+		box.top + box.height / 2,
+	);
+	expect(dialog.element().contains(top)).toBe(true);
+});
+
+test("CSV から取り込むダイアログを開いている間も、設定は後ろに見えている", async () => {
+	const { screen } = await openImport();
+	const settings = screen.getByRole("dialog", { name: "設定" }).element();
+	// Mantine は重ねた下のダイアログを透明にして隠すので、見えているかは不透明度で見る。
+	// 透明になるまでの動きが終わってから測る。
+	await new Promise((r) => requestAnimationFrame(r));
+	await Promise.all(settings.getAnimations().map((a) => a.finished));
+	expect(getComputedStyle(settings).opacity).toBe("1");
+});
+
+test("CSV から取り込むダイアログを開いている間も、設定の暗い幕を残し、本体と見分けられる", async () => {
+	await openImport();
+	// 設定の幕と取り込みの幕の 2 枚。本体は 2 枚分、設定は取り込みの 1 枚分だけ暗くなる。
+	await vi.waitFor(() =>
+		expect(document.querySelectorAll(".mantine-Modal-overlay")).toHaveLength(2),
+	);
+});
+
+// 設定のダイアログが、上に重ねたダイアログに隠されたままになっていないか。
+async function expectSettingsShown(
+	screen: Awaited<ReturnType<typeof openImport>>["screen"],
+) {
+	const settings = screen.getByRole("dialog", { name: "設定" });
+	await expect.element(settings).toBeVisible();
+	await vi.waitFor(() =>
+		expect(settings.element().closest("[data-hidden]")).toBeNull(),
+	);
+	await expect
+		.element(screen.getByRole("button", { name: "CSV から取り込む" }))
+		.toBeVisible();
+}
+
+test("CSV から取り込むダイアログを Esc で閉じても、設定は閉じない", async () => {
+	const onClose = vi.fn();
+	const { screen, dialog } = await openImport(onClose);
+	await userEvent.keyboard("{Escape}");
+	await expect.element(dialog).not.toBeInTheDocument();
+	expect(onClose).not.toHaveBeenCalled();
+	await expectSettingsShown(screen);
+});
+
+test("CSV から取り込むダイアログをキャンセルしたら、設定に戻り、もう一度取り込める", async () => {
+	const { screen, dialog } = await openImport();
+	await screen.getByRole("button", { name: "キャンセル" }).click();
+	await expect.element(dialog).not.toBeInTheDocument();
+	await expectSettingsShown(screen);
+	await screen.getByRole("button", { name: "CSV から取り込む" }).click();
+	await expect.element(dialog).toBeVisible();
 });
