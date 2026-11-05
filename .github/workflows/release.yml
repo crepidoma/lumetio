@@ -65,4 +65,4 @@ jobs:
             --verify-tag \
             --title "lumetio $GITHUB_REF_NAME" \
             --generate-notes \
-            --notes "macOS 版は Apple の署名をしていない。入れ方は README の「入れる」にある。"
+            --notes "macOS 版は Apple のコード署名をしていません。インストール方法は README の「インストール」を参照してください。"
