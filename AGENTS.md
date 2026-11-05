@@ -176,6 +176,7 @@ PR を出すか `main` に push すると、GitHub Actions（`.github/workflows/
 - コミットメッセージは日本語で 1 行、「〜した」の形で書く（例: `時間の書き方の解釈を追加した`）。
   何をしたかだけを書き、理由や補足を括弧などで足さない。
   ただし依存を足したコミットは、足した理由も同じ 1 行に書く（例: `YAMLの読み書きのためにyaml/v3を足した`）。
+  Dependabot が作る依存の更新の PR は、Dependabot の書き方（英語）のままでよい。
 - **本文もトレーラーも付けない。**
   `Co-Authored-By` などの署名系トレーラーを付けない（`.claude/settings.json` の `attribution` を空にしてある）。
 - `git add` はパスを指定する。
