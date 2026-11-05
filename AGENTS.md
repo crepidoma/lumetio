@@ -21,16 +21,34 @@ Windows と macOS で動かす。
 設計書に書かれていないことは決めずに相談する。
 決まったことは設計書に書き足してから実装する。
 
+手順がまとまった作業は skill に置く。
+該当する作業では先に読む。
+
+| skill | 用途 |
+| --- | --- |
+| [build-and-launch](.agents/skills/build-and-launch/SKILL.md) | アプリをビルドして起動を確認する。開発モードを試し用のデータで起動する |
+
+skill は `.agents/skills/` を正本として編集する。
+Claude Code は `.claude/skills/` しか読まないため、そこには本文を指すポインタだけを置く。
+skill を足したら、同じ `name` と `description` のポインタを `.claude/skills/<name>/SKILL.md` に手で作る。
+
 ## 完了の定義（毎回これを通す）
 
 コードを変更したら、これが成功する状態にしてから完了とする。
-Go は `mise.toml` の版を使う。
+Go、Node.js、pnpm は `mise.toml` の版を使う。
 Go はグローバルに有効化していないので、`mise exec --` を付けて動かす。
+wails3 は次のように入れる。
+
+```sh
+mise exec -- go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
+```
 
 ```sh
 mise exec -- gofmt -l .        # 何も出ないこと
 mise exec -- go vet ./...
 mise exec -- go test ./...
+mise exec -- pnpm --dir frontend check   # Biome の整形と静的解析
+mise exec -- wails3 build      # フロントエンドの型チェックとビルドを含む
 ```
 
 PC のメモリが足りないと `go vet` と `go test` が落ちることがある。
@@ -40,6 +58,8 @@ PC のメモリが足りないと `go vet` と `go test` が落ちることが�
   落ちている事実を報告する。
 - 「動いた」と報告する前に、実際にコマンドを実行して結果を見る。
   推測で報告しない。
+- 画面に関わる変更は、[build-and-launch](.agents/skills/build-and-launch/SKILL.md) で起動まで確かめる。
+  見た目など、こちらで確かめられないものはユーザーに確認を頼み、確かめていないことを報告に書く。
 
 ## このアプリの優先順位
 
@@ -173,7 +193,7 @@ PC のメモリが足りないと `go vet` と `go test` が落ちることが�
 
 - Python のスクリプトは scratchpad にファイルとして書き、`python script.py` で実行する。
   `python -` やヒアドキュメントで標準入力から渡さない。
-- バックグラウンドで起動したプロセスは、作業の最後に終了しているか確認する。
+- バックグラウンドで起動したプロセス（起動確認したアプリ、`wails3 dev` など）は、作業の最後に終了しているか確認する。
 
 ## 判断と相談
 

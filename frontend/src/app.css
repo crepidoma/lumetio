@@ -1,0 +1,1559 @@
+/* 色は画面全体でここだけに置く。暗い色は OS の設定に合わせて切り替える。 */
+:root {
+	--bg: #f4f4f1;
+	--surface: #ffffff;
+	--surface-sub: #fafaf8;
+	--text: #1f2328;
+	--text-sub: #5f6670;
+	--border: #e3e4e8;
+	--border-soft: #ecedf0;
+	--border-strong: #d5d7dd;
+	--border-dashed: #b9bcc4;
+	--accent: #2f4fc4;
+	--accent-strong: #1e3a9e;
+	--accent-soft: #eef1fb;
+	--tag-bg: #f1f0ea;
+	--tag-text: #4a4f57;
+	--plan-bg: #fbfcff;
+	--plan-border: #9aa8de;
+	--ok: #3d7a4a;
+	--warn: #b25e00;
+	--danger: #b42318;
+	--star: #d9a100;
+	--hover-overlay: rgb(0 0 0 / 0.06);
+	/* Windows の WebView2 は ui-monospace を使わないので、Consolas になる。
+	   Cascadia Mono は - を 1 文字分いっぱいに描き、テンプレートの {{- などがダッシュに見えるので後ろにする。 */
+	--mono: ui-monospace, "Consolas", "SF Mono", "Cascadia Mono", monospace;
+}
+
+[data-mantine-color-scheme="dark"] {
+	--bg: #17181b;
+	--surface: #1f2125;
+	--surface-sub: #1b1c20;
+	--text: #e6e7ea;
+	--text-sub: #9aa0a9;
+	--border: #2e3036;
+	--border-soft: #2a2c31;
+	--border-strong: #3a3d44;
+	--border-dashed: #4a4d55;
+	--accent: #7b93f0;
+	--accent-strong: #a9b8f5;
+	--accent-soft: #252c47;
+	--tag-bg: #2a2a27;
+	--tag-text: #c4c6ca;
+	--plan-bg: #1d2130;
+	--plan-border: #4f5c94;
+	--ok: #7cc28b;
+	--warn: #f0a050;
+	--danger: #f07a70;
+	--star: #e8bf3c;
+	--hover-overlay: rgb(255 255 255 / 0.08);
+}
+
+/* ウィンドウ全体はスクロールせず、ペインごとにスクロールする。 */
+html,
+body,
+#root {
+	height: 100%;
+	margin: 0;
+	overflow: hidden;
+}
+
+body {
+	background: var(--bg);
+	color: var(--text);
+	font-size: 14px;
+}
+
+.layout {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+/* ボタンの共通の形 */
+
+.icon-button,
+.text-button,
+.primary-button {
+	font: inherit;
+	cursor: pointer;
+	border-radius: 6px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	box-sizing: border-box;
+}
+
+.icon-button {
+	width: 36px;
+	height: 36px;
+	border: 1px solid var(--border);
+	background: var(--surface);
+	color: var(--text);
+}
+
+.text-button {
+	height: 32px;
+	padding: 0 12px;
+	border: 1px solid var(--border-strong);
+	background: var(--surface);
+	color: var(--text);
+	font-size: 13px;
+}
+
+.text-button:disabled {
+	color: var(--text-sub);
+	cursor: default;
+	opacity: 0.6;
+}
+
+.primary-button {
+	height: 32px;
+	padding: 0 14px;
+	border: none;
+	background: var(--accent);
+	color: #ffffff;
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.icon-button:hover,
+.text-button:not(:disabled):hover {
+	background: var(--surface-sub);
+}
+
+.primary-button:hover {
+	background: var(--accent-strong);
+}
+
+.badge {
+	font-size: 11px;
+	line-height: 1.6;
+	padding: 0 6px;
+	border-radius: 4px;
+	background: var(--tag-bg);
+	color: var(--tag-text);
+	white-space: nowrap;
+}
+
+.kbd {
+	font-family: var(--mono);
+	font-size: 11px;
+	color: var(--text-sub);
+	border: 1px solid var(--border-strong);
+	border-radius: 4px;
+	padding: 1px 6px;
+}
+
+/* ヘッダー */
+
+.header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 16px;
+	background: var(--surface);
+	border-bottom: 1px solid var(--border);
+	flex: none;
+}
+
+.date-nav {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.date-nav .text-button {
+	height: 36px;
+	border-color: var(--border);
+}
+
+.date-label {
+	all: unset;
+	cursor: pointer;
+	padding: 6px 10px;
+	border-radius: 6px;
+	font-size: 15px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+
+.date-label:hover {
+	background: var(--surface-sub);
+}
+
+.search {
+	flex: 1 1 360px;
+	max-width: 560px;
+}
+
+.search input {
+	background: var(--bg);
+	border-radius: 8px;
+	font-size: 14px;
+}
+
+/* 入力の誤りのときは、Mantine の赤い枠を残す。 */
+.search input:not([data-error]) {
+	border-color: var(--border-strong);
+}
+
+.result {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	min-width: 0;
+}
+
+.result-title {
+	flex: 1;
+	min-width: 0;
+	font-size: 13px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.result-meta {
+	flex: none;
+	font-size: 11px;
+	color: var(--text-sub);
+}
+
+.result-date {
+	font-family: var(--mono);
+}
+
+/* ペイン */
+
+.body {
+	flex: 1;
+	display: flex;
+	min-height: 0;
+	/* 狭いときに引き出す右ペインを、この中に重ねて置くため。 */
+	position: relative;
+}
+
+.pane {
+	overflow-y: auto;
+	min-height: 0;
+	box-sizing: border-box;
+}
+
+/* 左ペインは、タスクの一覧だけをスクロールし、最下段のタスクの管理のボタンは動かさない。 */
+.left {
+	flex: none;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	background: var(--surface-sub);
+}
+
+.center {
+	flex: 1;
+	min-width: 0;
+	padding: 20px 24px;
+}
+
+.right {
+	flex: none;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	padding: 16px;
+	gap: 12px;
+	background: var(--surface);
+}
+
+/* 左ペインのタスク */
+
+.tasks {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	padding: 16px 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.tasks-footer {
+	flex: none;
+	padding: 6px 8px;
+	border-top: 1px solid var(--border-soft);
+}
+
+.tasks-section {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.tasks-head {
+	margin: 0 4px 6px;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	color: var(--text-sub);
+}
+
+.tasks-fold {
+	all: unset;
+	cursor: pointer;
+	padding: 4px;
+	font-size: 12px;
+	color: var(--text-sub);
+}
+
+.task {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px;
+	border-radius: 6px;
+	background: var(--surface);
+	border: 1px solid var(--border-soft);
+}
+
+/* よく使うタスクと定期的なタスクの行は、押すとタスクの編集を開く。押せることが分かるよう、マウスを乗せたら枠を濃くする。 */
+.task.editable {
+	cursor: pointer;
+}
+
+.task.editable:hover {
+	border-color: var(--border-strong);
+}
+
+.task:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: -1px;
+}
+
+.task-text {
+	flex: 1;
+	min-width: 0;
+}
+
+.task-title {
+	font-size: 13px;
+	line-height: 1.4;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.task-meta {
+	display: flex;
+	gap: 6px;
+	margin-top: 2px;
+	font-size: 11px;
+	color: var(--text-sub);
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.task-recorded {
+	color: var(--ok);
+	flex: none;
+}
+
+.task-project {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.task-done,
+.task-star,
+.task-add {
+	all: unset;
+	cursor: pointer;
+	flex: none;
+	width: 28px;
+	height: 28px;
+	box-sizing: border-box;
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+/* ✓ (完了) は、マウスを乗せた行とキーボードで移った行にだけ出す。透明にして隠し、Tab で移れるようにする。 */
+.task-done {
+	color: var(--text-sub);
+	opacity: 0;
+}
+
+.task:hover .task-done,
+.task:focus-within .task-done {
+	opacity: 1;
+}
+
+.task-done:hover {
+	color: var(--ok);
+	background: var(--accent-soft);
+}
+
+/* ☆は、マウスを乗せた行とキーボードで移った行にだけ出す。 */
+.task-star {
+	color: var(--text-sub);
+	visibility: hidden;
+}
+
+.task-star.on {
+	color: var(--star);
+}
+
+.task:hover .task-star,
+.task:focus-within .task-star {
+	visibility: visible;
+}
+
+.task-add {
+	color: var(--accent);
+	border: 1px solid var(--border-strong);
+	background: var(--surface);
+}
+
+.task-add:hover,
+.task-star:hover {
+	background: var(--accent-soft);
+}
+
+/* 中央の記録 */
+
+.day {
+	max-width: 960px;
+	margin: 0 auto;
+}
+
+.day-summary {
+	display: flex;
+	align-items: baseline;
+	gap: 12px;
+	margin-bottom: 12px;
+}
+
+.day-title {
+	margin: 0;
+	font-size: 18px;
+	font-weight: 600;
+}
+
+.day-total {
+	font-size: 13px;
+	color: var(--text-sub);
+}
+
+.day-total b {
+	font-family: var(--mono);
+	font-weight: 500;
+	color: var(--text);
+}
+
+.rows {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.row {
+	padding: 12px 14px;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface);
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.row.record {
+	cursor: pointer;
+}
+
+.row.record:hover,
+.row.record.open {
+	border-color: var(--border-strong);
+}
+
+.row.record:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
+/* 予定は、まだ記録でないことが分かるように点線で囲む。 */
+.row.plan {
+	background: var(--plan-bg);
+	border: 1px dashed var(--plan-border);
+}
+
+.plan-badge {
+	background: var(--accent-soft);
+	color: var(--accent);
+}
+
+.plan-actions {
+	margin-left: auto;
+	display: flex;
+	gap: 6px;
+}
+
+.row-line {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.row-title {
+	all: unset;
+	cursor: text;
+	font-size: 14px;
+	font-weight: 500;
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+}
+
+.row-title:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+.row-title-input {
+	font: inherit;
+	font-size: 14px;
+	font-weight: 500;
+	color: inherit;
+	background: transparent;
+	border: none;
+	border-bottom: 1px solid var(--accent);
+	outline: none;
+	padding: 0;
+	min-width: 12em;
+	flex: 1;
+}
+
+.row-title-input.error {
+	border-bottom-color: var(--danger);
+}
+
+.row-total {
+	margin-left: auto;
+	min-width: 48px;
+	text-align: right;
+	font-family: var(--mono);
+	font-size: 14px;
+	font-weight: 500;
+}
+
+.row-total.untimed {
+	color: var(--text-sub);
+	font-family: inherit;
+	font-weight: 400;
+}
+
+.row-project {
+	font-size: 12px;
+	color: var(--text-sub);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.row-project.out-of-period {
+	color: var(--warn);
+}
+
+.row-times {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	cursor: default;
+	/* 行の中で、押して開閉する場所と見分けられるよう、時間の並びの幅だけにする。 */
+	width: fit-content;
+}
+
+.chip {
+	display: inline-flex;
+	align-items: center;
+	height: 26px;
+	padding: 0 4px 0 10px;
+	border-radius: 13px;
+	box-sizing: border-box;
+	background: var(--accent-soft);
+	color: var(--accent-strong);
+	font-family: var(--mono);
+	font-size: 12px;
+}
+
+.plan-chip {
+	padding-right: 10px;
+	background: transparent;
+	border: 1px dashed var(--plan-border);
+}
+
+.chip-label,
+.chip-remove {
+	all: unset;
+	cursor: pointer;
+}
+
+.chip-remove {
+	width: 20px;
+	height: 20px;
+	border-radius: 10px;
+	text-align: center;
+	line-height: 20px;
+}
+
+.chip-remove:hover {
+	background: var(--hover-overlay);
+}
+
+.time-input {
+	height: 26px;
+	padding: 0 10px;
+	border-radius: 13px;
+	font-family: var(--mono);
+	font-size: 12px;
+	color: inherit;
+	background: transparent;
+	outline: none;
+	box-sizing: border-box;
+}
+
+.time-input.add {
+	width: 160px;
+	border: 1px dashed var(--border-dashed);
+}
+
+.time-input.add:focus {
+	width: 230px;
+	border-style: solid;
+	border-color: var(--accent);
+}
+
+.time-input.edit {
+	width: 140px;
+	border: 1px solid var(--accent);
+}
+
+.time-input.error {
+	border-color: var(--danger);
+}
+
+.row-note {
+	font-size: 12px;
+	color: var(--tag-text);
+	padding: 6px 8px;
+	border-radius: 4px;
+	background: var(--surface-sub);
+	white-space: pre-wrap;
+	/* note.ts の noteMaxRows と同じ 6 行を超えたら、この中でスクロールする。 */
+	max-height: calc(6 * 1.55em);
+	overflow-y: auto;
+	line-height: 1.55;
+	cursor: auto;
+}
+
+.row-detail {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-top: 4px;
+	padding-top: 10px;
+	border-top: 1px solid var(--border);
+	cursor: default;
+}
+
+/* メモ欄 */
+
+.notes {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	align-items: center;
+	column-gap: 16px;
+	row-gap: 8px;
+}
+
+/* 名前と値を、表の 1 行のように 2 列にそろえる。 */
+.notes-row {
+	display: contents;
+}
+
+.notes-name {
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.notes-value {
+	min-width: 0;
+}
+
+/* メモ欄が長くなっても、下のプレビューの場所を残すよう、高さに上限を付けて中でスクロールする。 */
+.right > .notes-section {
+	flex: none;
+	display: flex;
+	flex-direction: column;
+	max-height: 40%;
+	padding-bottom: 12px;
+	border-bottom: 1px solid var(--border);
+}
+
+.notes-section .notes {
+	min-height: 0;
+	overflow-y: auto;
+}
+
+.notes-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 6px;
+}
+
+/* 左ペインの見出しとそろえる。 */
+.notes-title {
+	margin: 0;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	color: var(--text-sub);
+}
+
+/* 期間の外のプロジェクトは、詳しい表示の欄でも警告の色にする。 */
+.row-detail .out-of-period input {
+	color: var(--warn);
+	border-color: var(--warn);
+}
+
+/* 右ペインの出力 */
+
+.output {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	padding: 3px;
+	border-radius: 8px;
+	background: var(--tag-bg);
+	align-self: flex-start;
+}
+
+.tab {
+	all: unset;
+	cursor: pointer;
+	padding: 4px 12px;
+	border-radius: 6px;
+	font-size: 13px;
+	color: var(--text-sub);
+}
+
+.tab.on {
+	background: var(--surface);
+	color: var(--text);
+	font-weight: 500;
+	box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+.tab:focus-visible {
+	outline: 2px solid var(--accent);
+}
+
+/* プレビューはペインの残りの高さを使い、長ければこの中でスクロールする。 */
+.preview {
+	flex: 1;
+	min-height: 0;
+	margin: 0;
+	overflow: auto;
+	padding: 14px;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface-sub);
+	font-family: var(--mono);
+	font-size: 12px;
+	line-height: 1.7;
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.preview.error {
+	color: var(--danger);
+	font-family: inherit;
+}
+
+.output-actions {
+	display: flex;
+	gap: 8px;
+}
+
+.output-actions button {
+	flex: 1;
+	height: 40px;
+	font-size: 14px;
+}
+
+.output-actions button:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+/* 列の幅いっぱいに広がると、右の空いたところを押しても切り替わるので、スイッチの幅に縮める。 */
+.notes-switch {
+	justify-self: start;
+}
+
+/* ペインの境目。細い線を見せ、つかめる幅は少し広くする。 */
+.splitter {
+	flex: none;
+	width: 6px;
+	margin: 0 -3px;
+	position: relative;
+	z-index: 1;
+	cursor: col-resize;
+	touch-action: none;
+	background:
+		linear-gradient(var(--border), var(--border)) center / 1px 100% no-repeat;
+}
+
+.splitter:hover,
+.splitter:focus-visible {
+	outline: none;
+	background:
+		linear-gradient(var(--accent), var(--accent)) center / 2px 100% no-repeat;
+}
+
+/* 右ペインを畳んだときの細いバー。幅は Workspace.tsx の barWidth に合わせる。 */
+.right-bar {
+	flex: none;
+	width: 72px;
+	box-sizing: border-box;
+	/* 上の余白は右ペインと同じにし、開くボタンと閉じるボタンの高さをそろえる。 */
+	padding: 16px 8px 12px;
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 8px;
+	background: var(--surface);
+}
+
+.bar-button {
+	font: inherit;
+	font-size: 12px;
+	height: 48px;
+	border-radius: 8px;
+	cursor: pointer;
+	border: 1px solid var(--border-strong);
+	background: var(--surface);
+	color: var(--text);
+}
+
+.bar-button.primary {
+	border: none;
+	background: var(--accent);
+	color: #ffffff;
+}
+
+.bar-button:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.bar-name {
+	font-size: 10px;
+	line-height: 1.5;
+	text-align: center;
+	color: var(--text-sub);
+	overflow-wrap: anywhere;
+}
+
+.bar-bottom {
+	margin-top: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+/*
+ * 右ペインの開閉ボタン。開いた右ペインと畳んだバーの最上段に、行の幅いっぱいで置く。
+ * 行のどこを押しても開け閉めでき、枠を付けずに中身に馴染ませる。
+ * 上の余白は右ペインとバーで同じにし、開くボタンと閉じるボタンの高さをそろえる。
+ */
+.pane-toggle {
+	all: unset;
+	flex: none;
+	box-sizing: border-box;
+	height: 32px;
+	display: flex;
+	align-items: center;
+	padding: 0 8px;
+	border-radius: 6px;
+	color: var(--text-sub);
+	cursor: pointer;
+}
+
+.right-bar .pane-toggle {
+	justify-content: center;
+	padding: 0;
+}
+
+.pane-toggle:hover {
+	background: var(--surface-sub);
+	color: var(--text);
+}
+
+.pane-toggle:focus-visible {
+	outline: 2px solid var(--accent);
+}
+
+/* 右の領域。開け閉めで幅をなめらかに変え、右ペインとバーを重ねて、見えている方を入れ替える。 */
+.right-dock {
+	position: relative;
+	flex: none;
+	overflow: hidden;
+	transition: width 0.2s ease;
+}
+
+/* 境目をドラッグしているあいだは、幅が指に遅れないよう、なめらかに変えない。 */
+.right-dock.dragging {
+	transition: none;
+}
+
+/* 右ペインは左に、バーは右に寄せて置く。畳むときは右ペインが左から隠れ、バーが右端に残る。 */
+.right-dock > .right,
+.right-dock > .right-bar {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	transition: opacity 0.15s ease;
+}
+
+.right-dock > .right {
+	left: 0;
+}
+
+.right-dock > .right-bar {
+	right: 0;
+}
+
+.right-dock > .hidden {
+	opacity: 0;
+	pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.right-dock,
+	.right-dock > .right,
+	.right-dock > .right-bar {
+		transition: none;
+	}
+}
+
+.bar-bottom[hidden] {
+	display: none;
+}
+
+/* 狭いときにバーから引き出す右ペイン。中央の上に重ね、影で浮かせる。暗い幕は掛けない。 */
+.sheet {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	z-index: 5;
+	border-left: 1px solid var(--border);
+	box-shadow: -8px 0 24px rgb(0 0 0 / 0.12);
+	/* 影は左側 (中央の上) にだけ落とす。右隣のバーにかかると、バーの端だけ色が違って見えるため。 */
+	clip-path: inset(0 0 0 -40px);
+	opacity: 0;
+	transform: translateX(16px);
+	pointer-events: none;
+	transition:
+		opacity 0.2s ease,
+		transform 0.2s ease;
+}
+
+.sheet.open {
+	opacity: 1;
+	transform: none;
+	pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.sheet {
+		transition: none;
+	}
+}
+
+/*
+ * 右ペインを引き出す、しまうときのビュー遷移 (morph.ts)。
+ * 画面全体は切り替えの前後を重ねて薄くせず、引き出す右ペイン自身の動きに任せる。名前を付けたボタンだけが移っていく。
+ * 遷移のあいだも、押した操作が下の画面に届くようにする。
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation: none;
+}
+
+::view-transition-group(*) {
+	animation-duration: 0.2s;
+	animation-timing-function: ease;
+}
+
+::view-transition {
+	pointer-events: none;
+}
+
+/* 並べ替えの取っ手。行の左端に重ね、マウスを乗せた行とキーボードで移った行にだけ出す。 */
+.sortable {
+	position: relative;
+}
+
+.sortable.dragging {
+	z-index: 10;
+	opacity: 0.9;
+}
+
+.sortable.dragging > * {
+	box-shadow: 0 6px 20px rgb(0 0 0 / 0.15);
+}
+
+.drag-handle {
+	all: unset;
+	position: absolute;
+	top: 50%;
+	left: 6px;
+	transform: translateY(-50%);
+	width: 14px;
+	height: 28px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 4px;
+	color: var(--text-sub);
+	cursor: grab;
+	touch-action: none;
+	/* visibility で隠すと Tab で移れなくなるので、透明にして隠す。 */
+	opacity: 0;
+}
+
+/*
+ * 記録の行の取っ手は、行の真ん中ではなく、いちばん上の段 (タスク名の行) の高さに置く。
+ * 動かし始めて詳しい表示を畳むと行は下から縮むので、つかんでいる取っ手がカーソルの位置に残るようにするため。
+ */
+.row > .drag-handle {
+	top: 12px;
+	transform: none;
+	height: 22px;
+}
+
+.sortable:hover .drag-handle,
+.drag-handle:focus-visible,
+.sortable.dragging .drag-handle {
+	opacity: 1;
+}
+
+.drag-handle:focus-visible {
+	outline: 2px solid var(--accent);
+}
+
+.sortable.dragging .drag-handle {
+	cursor: grabbing;
+}
+
+.tasks-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+/* 記録の一覧と予定の一覧のあいだも、記録どうしと同じ間をあける。記録がなければ、予定を一覧の上端から出す。 */
+.rows:not(:empty) + .rows.plans {
+	margin-top: 8px;
+}
+
+/* 並べ替えられる行は、取っ手を左の余白の中に置けるよう、左の余白を広げる。 */
+.sortable > .row {
+	padding-left: 30px;
+}
+
+.sortable > .task {
+	padding-left: 26px;
+}
+
+.tasks-manage {
+	all: unset;
+	cursor: pointer;
+	box-sizing: border-box;
+	width: 100%;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 8px;
+	border-radius: 6px;
+	font-size: 12px;
+	color: var(--text-sub);
+}
+
+.tasks-manage:hover {
+	color: var(--text);
+	background: var(--hover-overlay);
+}
+
+/* タスクの編集のタイトルの右に置く☆。左ペインの☆と同じ見た目で、いつも出しておく。 */
+.title-star {
+	all: unset;
+	cursor: pointer;
+	flex: none;
+	width: 36px;
+	height: 36px;
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--text-sub);
+}
+
+.title-star.on {
+	color: var(--star);
+}
+
+.title-star:hover {
+	background: var(--accent-soft);
+}
+
+.title-star:focus-visible {
+	outline: 2px solid var(--accent);
+}
+
+.tasks-manage:focus-visible {
+	outline: 2px solid var(--accent);
+}
+
+/* 検索の結果の鉛筆は、マウスを乗せた行と、キーボードで選んでいる行にだけ出す。 */
+.result-edit {
+	all: unset;
+	cursor: pointer;
+	flex: none;
+	align-self: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--text-sub);
+	opacity: 0;
+}
+
+[data-combobox-selected] .result-edit,
+[data-combobox-option]:hover .result-edit {
+	opacity: 1;
+}
+
+.result-edit:hover {
+	color: var(--text);
+	background: var(--hover-overlay);
+}
+
+/* タスクの管理の一覧 */
+.managed {
+	display: flex;
+	flex-direction: column;
+	max-height: 60vh;
+	overflow-y: auto;
+}
+
+.managed-row {
+	all: unset;
+	cursor: pointer;
+	display: grid;
+	/* 行ごとに幅が変わらないよう、時間と繰り返しの列は幅を決めておく。 */
+	grid-template-columns: 20px minmax(0, 1fr) 160px 200px;
+	align-items: baseline;
+	gap: 12px;
+	padding: 8px;
+	border-radius: 6px;
+	font-size: 13px;
+}
+
+.managed-row:hover {
+	background: var(--hover-overlay);
+}
+
+.managed-row:focus-visible {
+	outline: 2px solid var(--accent);
+}
+
+.managed-star {
+	color: var(--star);
+	align-self: center;
+	display: flex;
+}
+
+.managed-title {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.managed-project {
+	margin-left: 8px;
+	font-size: 11px;
+	color: var(--text-sub);
+}
+
+.managed-time {
+	font-family: var(--mono);
+	font-size: 12px;
+	color: var(--text-sub);
+}
+
+.managed-repeat {
+	font-size: 12px;
+	color: var(--text-sub);
+	white-space: nowrap;
+}
+
+.result-edit-space {
+	flex: none;
+	width: 24px;
+}
+
+/* 歯車は検索欄の幅によらず右端に置く。 */
+.settings-button {
+	margin-left: auto;
+	flex: none;
+}
+
+/* 項目を切り替えてもダイアログの高さが変わらないよう、高さを決める。
+   プロジェクトの一覧は何十件にもなるので、ウィンドウに収まる範囲で高くする。 */
+.settings {
+	height: min(720px, calc(100dvh - 160px));
+}
+
+.settings .mantine-Tabs-panel {
+	padding-left: var(--mantine-spacing-lg);
+	min-width: 0;
+	overflow-y: auto;
+}
+
+/* 表と保存ボタンだけの項目。表は、保存ボタンを除いた残りの高さに収め、行だけを送る。 */
+.table-section {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+}
+
+/* 日次画面から開くダイアログでは、高さが決まっていないので、画面に収まる高さで送る。 */
+.mantine-Modal-body > .table-section {
+	max-height: 70dvh;
+}
+
+/* コードだけで使うこともあり、名前と同じくらい長いこともあるので、コードと名前で残りの幅を半分ずつ使う。 */
+.project-columns {
+	grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1fr) 150px 150px 28px;
+}
+
+.notedefs-columns {
+	grid-template-columns: 24px minmax(0, 1fr) 140px 140px 28px;
+}
+
+.dialog-title {
+	font-size: 18px;
+	font-weight: 600;
+}
+
+/* 確かめるダイアログの問いかけ。見出しにせず、本文と同じ大きさで出す。 */
+.confirm-header {
+	min-height: 0;
+	padding-bottom: var(--mantine-spacing-xs);
+}
+
+.confirm-message {
+	font-size: 15px;
+	font-weight: 400;
+	line-height: 1.6;
+}
+
+.confirm-detail {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	color: var(--text-sub);
+}
+
+/* 中身が広くても、項目の並びの幅は変えない。 */
+.settings .mantine-Tabs-list {
+	flex: none;
+	width: 160px;
+	padding: 4px;
+	gap: 2px;
+	border-radius: 6px;
+	background: var(--surface-sub);
+}
+
+.settings .mantine-Tabs-list::before {
+	display: none;
+}
+
+.settings .mantine-Tabs-tab {
+	border: none;
+	border-radius: 4px;
+	color: var(--text-sub);
+}
+
+/* 縦に並べた項目は、中身に近い右に寄せる。 */
+.settings .mantine-Tabs-tabLabel {
+	text-align: right;
+}
+
+.settings .mantine-Tabs-tab[data-active] {
+	background: var(--accent-soft);
+	color: var(--accent-strong);
+	font-weight: 600;
+}
+
+/* 出力と出力セットの管理。左に一覧、右に選んだものの中身を出す。 */
+.outputs-section {
+	display: grid;
+	grid-template-columns: 220px 1fr;
+	column-gap: var(--mantine-spacing-lg);
+	height: 100%;
+	min-height: 0;
+}
+
+.outputs-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	min-height: 0;
+}
+
+.outputs-items {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	overflow-y: auto;
+	min-height: 0;
+}
+
+.template-item {
+	all: unset;
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 6px 8px;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 14px;
+}
+
+.template-item:hover {
+	background: var(--hover-overlay);
+}
+
+.template-item:focus-visible {
+	outline: 2px solid var(--accent);
+}
+
+.template-item.active {
+	background: var(--accent-soft);
+	color: var(--accent-strong);
+}
+
+.template-item-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.template-item.broken .template-item-name {
+	color: var(--danger);
+}
+
+.template-item-kind {
+	flex: none;
+	font-size: 12px;
+	color: var(--text-sub);
+}
+
+.outputs-editor {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+}
+
+.outputs-editor-body {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	padding-right: 8px;
+	/* 送る中身があるかで右端が動かないよう、スクロールバーの場所をいつも空けておく。 */
+	scrollbar-gutter: stable;
+}
+
+.outputs-editor-foot {
+	flex: none;
+	padding-top: 12px;
+	border-top: 1px solid var(--border);
+}
+
+.mono-input,
+.template-preview {
+	font-family: var(--mono);
+	font-size: 13px;
+}
+
+/* 出力の中身は小見出しで区切る。どの欄も小見出しと同じ左端にそろえる。 */
+.editor-section {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.editor-section-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 12px;
+	padding-bottom: 4px;
+	border-bottom: 1px solid var(--border-soft);
+}
+
+.editor-section-title {
+	margin: 0;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--text-sub);
+}
+
+.editor-section-aside {
+	font-family: var(--mono);
+	font-size: 12px;
+	color: var(--text-sub);
+}
+
+.file-fields {
+	display: grid;
+	grid-template-columns: 1fr 180px 110px;
+	gap: 8px;
+}
+
+.file-fields.with-extension {
+	grid-template-columns: 1fr 100px 180px 110px;
+}
+
+.csv-rows {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 24px;
+}
+
+/* 並べ替える表。取っ手は最初の列に出し続ける。隠すと、行の中身が取っ手のぶんずれて見えるため。
+   行が多いときは、見出しと下端を残して行だけを送る。 */
+.edit-table {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--surface);
+}
+
+.edit-table-body {
+	min-height: 0;
+	overflow-y: auto;
+}
+
+.edit-table-head,
+.edit-table-row {
+	display: grid;
+	align-items: center;
+	column-gap: 8px;
+	padding: 6px 8px;
+}
+
+.edit-table-head {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--text-sub);
+	background: var(--surface-sub);
+	border-bottom: 1px solid var(--border);
+	border-radius: 6px 6px 0 0;
+}
+
+.edit-table .sortable + .sortable {
+	border-top: 1px solid var(--border-soft);
+}
+
+.edit-table .sortable.dragging .edit-table-row {
+	background: var(--surface);
+}
+
+.edit-table .sortable .drag-handle {
+	position: static;
+	transform: none;
+	width: 24px;
+	opacity: 1;
+}
+
+.edit-table-foot {
+	padding: 6px 8px;
+	border-top: 1px solid var(--border);
+}
+
+.csv-columns {
+	grid-template-columns: 24px 200px minmax(0, 1fr) 28px;
+}
+
+.set-outputs {
+	grid-template-columns: 24px minmax(0, 1fr) 28px;
+	font-size: 14px;
+}
+
+.csv-value {
+	display: flex;
+	gap: 8px;
+	min-width: 0;
+}
+
+.csv-field {
+	flex: none;
+	width: 150px;
+}
+
+.csv-detail {
+	flex: 1;
+	min-width: 0;
+}
+
+.set-add {
+	width: 240px;
+}
+
+.template-preview {
+	margin: 0;
+	padding: 8px 12px;
+	min-height: 48px;
+	max-height: 240px;
+	overflow: auto;
+	border: 1px solid var(--border);
+	border-radius: 4px;
+	background: var(--surface-sub);
+	white-space: pre-wrap;
+}
+
+.template-preview.error {
+	color: var(--danger);
+}
