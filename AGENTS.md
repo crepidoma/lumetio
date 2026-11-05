@@ -14,6 +14,7 @@ Windows と macOS で動かす。
 
 | 資料 | 内容 |
 | --- | --- |
+| [README.md](README.md) | できること、ファイルの置き場所、開発の環境の用意、コードの構成 |
 | [documents/design.md](documents/design.md) | 設計書。データの持ち方、時間の書き方、出力、画面、MCP |
 | [documents/template-reference.md](documents/template-reference.md) | テンプレートリファレンス。出力のテンプレートの書き方と例 |
 
@@ -39,17 +40,7 @@ skill を足したら、同じ `name` と `description` のポインタを `.cla
 コードを変更したら、これが成功する状態にしてから完了とする。
 Go、Node.js、pnpm は `mise.toml` の版を使う。
 Go はグローバルに有効化していないので、`mise exec --` を付けて動かす。
-wails3 は次のように入れる。
-
-```sh
-mise exec -- go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
-```
-
-画面のテストに使うブラウザは、初めに 1 回入れておく。
-
-```sh
-mise exec -- pnpm --dir frontend exec playwright install chromium webkit
-```
+環境の用意（wails3、画面のテストに使うブラウザ）は README の「開発」にある。
 
 ```sh
 mise exec -- gofmt -l .        # 何も出ないこと
@@ -62,6 +53,9 @@ mise exec -- wails3 build      # フロントエンドの型チェックとビ�
 
 PC のメモリが足りないと `go vet` と `go test` が落ちることがある。
 そのときは `-p 1` を付けて、並べて動かす数を減らす。
+
+push すると、GitHub Actions（`.github/workflows/ci.yml`）が同じものを Windows と macOS で動かす。
+ワークフローを変えたときは、GitHub で通ったかを確かめてから完了とする（手元では動かせない）。
 
 - 「テストが落ちているが本質的でない」と判断して放置しない。
   落ちている事実を報告する。

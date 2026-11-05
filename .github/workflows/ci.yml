@@ -1,0 +1,95 @@
+# 完了の定義 (AGENTS.md) を Windows と macOS で動かし、できた実行ファイルを置く。
+# 画面は Windows では WebView2、macOS では WKWebView で動くので、どちらの OS でもビルドして確かめる。
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    strategy:
+      # 片方の OS で落ちても、もう片方の結果も見られるようにする。
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      # Go、Node.js、pnpm を mise.toml の版で入れる。
+      - uses: jdx/mise-action@v5
+
+      - name: キャッシュの場所を決める
+        id: paths
+        run: |
+          echo "go-build=$(mise exec -- go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-mod=$(mise exec -- go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+          echo "pnpm-store=$(mise exec -- pnpm --dir frontend store path)" >> "$GITHUB_OUTPUT"
+          echo "PLAYWRIGHT_BROWSERS_PATH=$RUNNER_TEMP/ms-playwright" >> "$GITHUB_ENV"
+
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ${{ steps.paths.outputs.go-build }}
+            ${{ steps.paths.outputs.go-mod }}
+            ${{ steps.paths.outputs.pnpm-store }}
+            ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: ${{ runner.os }}-${{ hashFiles('mise.toml', 'go.sum', 'frontend/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-
+
+      - name: wails3 を入れる
+        run: mise exec -- go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
+
+      - name: フロントエンドの依存を入れる
+        run: mise exec -- pnpm --dir frontend install --frozen-lockfile
+
+      - name: 画面のテストに使うブラウザを入れる
+        run: mise exec -- pnpm --dir frontend exec playwright install --with-deps chromium webkit
+
+      # go vet と go test は、埋め込むフロントエンドのビルドを読むので、先にビルドする。
+      - name: ビルド
+        run: mise exec -- wails3 build
+
+      - name: 生成したバインディングがコミットと同じか
+        run: git diff --exit-code -- frontend/bindings
+
+      - name: gofmt
+        run: |
+          unformatted=$(mise exec -- gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        run: mise exec -- go vet ./...
+
+      - name: go test
+        run: mise exec -- go test ./...
+
+      - name: Biome
+        run: mise exec -- pnpm --dir frontend check
+
+      - name: 画面のテスト
+        run: mise exec -- pnpm --dir frontend test
+
+      # macOS では .app にまとめる。署名はその PC だけで通るもの (ad hoc) で、配布用の署名はしない。
+      # 置き場はファイルの実行の権限を残さないので、tar にまとめて権限を残す。
+      - name: macOS のアプリにまとめる
+        if: runner.os == 'macOS'
+        run: |
+          mise exec -- wails3 package
+          tar -czf lumetio-macos.tar.gz -C bin lumetio.app
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: lumetio-${{ runner.os }}
+          path: ${{ runner.os == 'macOS' && 'lumetio-macos.tar.gz' || 'bin/lumetio.exe' }}
+          if-no-files-found: error
