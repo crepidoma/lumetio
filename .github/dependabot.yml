@@ -1,5 +1,8 @@
 # 依存の更新を PR で受け取り、CI で確かめてから取り込む。
 # 細かい更新ごとに PR が並ぶと見きれないので、種類ごとに 1 つの PR にまとめ、週に 1 回にする。
+# メジャーな更新は壊れやすく、別に試して決めたいので、まとめずに 1 つずつの PR にする。
+# Wails は Go のモジュール、フロントエンドの runtime、CI と README の wails3 コマンドの版をそろえて上げる必要があり、
+# Dependabot では別々の PR になるので、手で上げる。
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -9,19 +12,26 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+        update-types: [minor, patch]
 
   - package-ecosystem: gomod
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: github.com/wailsapp/wails/v3
     groups:
       go:
         patterns: ["*"]
+        update-types: [minor, patch]
 
   - package-ecosystem: npm
     directory: /frontend
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "@wailsio/runtime"
     groups:
       frontend:
         patterns: ["*"]
+        update-types: [minor, patch]
