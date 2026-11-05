@@ -27,6 +27,8 @@ Windows と macOS で動かす。
 | skill | 用途 |
 | --- | --- |
 | [build-and-launch](.agents/skills/build-and-launch/SKILL.md) | アプリをビルドして起動を確認する。開発モードを試し用のデータで起動する |
+| [fix-bug](.agents/skills/fix-bug/SKILL.md) | 再現するテストを先に書き、直す前のコードで落ちることを確かめてから直す |
+| [frontend-test](.agents/skills/frontend-test/SKILL.md) | 画面のテストを Chromium と WebKit で書いて動かす |
 
 skill は `.agents/skills/` を正本として編集する。
 Claude Code は `.claude/skills/` しか読まないため、そこには本文を指すポインタだけを置く。
@@ -43,11 +45,18 @@ wails3 は次のように入れる。
 mise exec -- go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
 ```
 
+画面のテストに使うブラウザは、初めに 1 回入れておく。
+
+```sh
+mise exec -- pnpm --dir frontend exec playwright install chromium webkit
+```
+
 ```sh
 mise exec -- gofmt -l .        # 何も出ないこと
 mise exec -- go vet ./...
 mise exec -- go test ./...
 mise exec -- pnpm --dir frontend check   # Biome の整形と静的解析
+mise exec -- pnpm --dir frontend test    # 画面のテスト (Chromium と WebKit)
 mise exec -- wails3 build      # フロントエンドの型チェックとビルドを含む
 ```
 
@@ -58,8 +67,8 @@ PC のメモリが足りないと `go vet` と `go test` が落ちることが�
   落ちている事実を報告する。
 - 「動いた」と報告する前に、実際にコマンドを実行して結果を見る。
   推測で報告しない。
-- 画面に関わる変更は、[build-and-launch](.agents/skills/build-and-launch/SKILL.md) で起動まで確かめる。
-  見た目など、こちらで確かめられないものはユーザーに確認を頼み、確かめていないことを報告に書く。
+- 画面に関わる変更は、振る舞いを画面のテスト（[frontend-test](.agents/skills/frontend-test/SKILL.md)）で確かめ、[build-and-launch](.agents/skills/build-and-launch/SKILL.md) で起動まで確かめる。
+  見た目など、テストで確かめられないものはユーザーに確認を頼み、確かめていないことを報告に書く。
 
 ## このアプリの優先順位
 
@@ -183,8 +192,11 @@ PC のメモリが足りないと `go vet` と `go test` が落ちることが�
 
 - テストはソースの隣に置く。
   - Go は `*_test.go`。
+  - フロントエンドの関数は `*.test.ts` にし、ブラウザを起動せずに Node で動かす。
+  - 画面の部品は `*.browser.test.tsx` にし、Chromium（Windows の WebView2）と WebKit（macOS の WKWebView）の両方で動かす。書き方は [frontend-test](.agents/skills/frontend-test/SKILL.md)。
 - **バグを直したら、そのバグを再現するテストを必ず追加する。**
   直す前のコードでテストが落ちることも確かめる。
+  手順は [fix-bug](.agents/skills/fix-bug/SKILL.md)。
 - ドメイン（時間の解釈、繰り返しの判定、工数の計算、出力の生成）は単体テストを書く。
 - 変更に合った検証を行う。
   構成だけの変更に形だけのテストを増やさない。
