@@ -46,7 +46,7 @@
 | 画面の部品 | Mantine | 入力欄、ダイアログ、知らせ、カレンダー、ダークモードがそろっていて、自分で作る部品が少なくて済む |
 | テンプレート | Go 標準の text/template | MCP からも出力を作るため Go 側で処理する |
 
-- Wails は v3.0.0 (2026-10-26 の安定版)。Go、Node.js、pnpm の版は mise.toml で固定する。
+- Wails は v3.1.0 (2026-11-01 の版)。Go、Node.js、pnpm の版は mise.toml で固定する。
 - 依存と理由は次のとおり。足すときは理由を残す。
   - YAML: go.yaml.in/yaml/v3 (YAML の団体が保守する後継。v4 は正式版が出てから検討する)
   - ファイルの監視: fsnotify
