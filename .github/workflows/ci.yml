@@ -2,11 +2,9 @@
 # 画面は Windows では WebView2、macOS では WKWebView で動くので、どちらの OS でもビルドして確かめる。
 name: CI
 
-# 作業用のブランチは PR で確かめる。push でも動かすと、同じコミットを二重に確かめることになる。
+# PR だけで確かめる。main は PR でしか変えられず、PR では取り込んだ後の形で確かめるので、取り込んだ後にもう一度は動かさない。
 on:
   pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
   # リリースのワークフローから呼び、配るファイルも同じ手順で作る。
   workflow_call:

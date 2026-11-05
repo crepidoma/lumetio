@@ -109,7 +109,7 @@ mise exec -- wails3 build   # bin/ に実行ファイルを作る
 ### 確かめる
 
 変更を確かめるコマンド（Go のテスト、Biome、画面のテスト、ビルド）は、[AGENTS.md](AGENTS.md) の「完了の定義」にある。
-GitHub で PR を出すか `main` に push すると、GitHub Actions（`.github/workflows/ci.yml`）が同じものを Windows と macOS で動かし、できた実行ファイル（macOS は `.app` を入れた dmg）を Artifacts に置く。
+GitHub で PR を出すと、GitHub Actions（`.github/workflows/ci.yml`）が同じものを Windows と macOS で動かし、できた実行ファイル（macOS は `.app` を入れた dmg）を Artifacts に置く。
 開き方は「入れる」と同じ。
 
 ### リリース
