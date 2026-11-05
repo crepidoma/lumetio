@@ -50,8 +50,9 @@ jobs:
       - name: フロントエンドの依存を入れる
         run: mise exec -- pnpm --dir frontend install --frozen-lockfile
 
+      # --with-deps は付けない。Windows では動画を再生する部品を毎回入れて 2 分ほどかかるが、テストは再生しない。macOS では何もしない。
       - name: 画面のテストに使うブラウザを入れる
-        run: mise exec -- pnpm --dir frontend exec playwright install --with-deps chromium webkit
+        run: mise exec -- pnpm --dir frontend exec playwright install chromium webkit
 
       # go vet と go test は、埋め込むフロントエンドのビルドを読むので、先にビルドする。
       - name: ビルド
