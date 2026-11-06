@@ -110,6 +110,9 @@ export function useRows<T>(
 					i.id === id ? { ...i, row: { ...i.row, ...patch } } : i,
 				),
 			),
+		// set は、行を丸ごと入れ替える。行が文字列だけのときは、update で一部を直せないため。
+		set: (id: string, row: T) =>
+			setItems((is) => is.map((i) => (i.id === id ? { ...i, row } : i))),
 		remove: (id: string) => setItems((is) => is.filter((i) => i.id !== id)),
 		reorder: (order: string[]) =>
 			setItems((is) => sortedBy(is, order, (i) => i.id)),

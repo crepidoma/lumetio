@@ -101,7 +101,7 @@ func TestListTools(t *testing.T) {
 		names = append(names, tool.Name)
 	}
 	slices.Sort(names)
-	want := []string{"add_records", "export_output_set", "get_days", "list_projects", "list_tasks", "remove_record", "render_output", "set_notes", "skip_plans", "update_record"}
+	want := []string{"add_records", "export_output_set", "get_days", "list_projects", "list_tags", "list_tasks", "remove_record", "render_output", "set_notes", "skip_plans", "update_record"}
 	if !slices.Equal(names, want) {
 		t.Errorf("tools = %v", names)
 	}
@@ -218,5 +218,26 @@ func TestToolErrors(t *testing.T) {
 		if msg := call(t, cs, tt.tool, tt.args, nil); !strings.Contains(msg, tt.want) {
 			t.Errorf("%s %v: %q, want containing %q", tt.tool, tt.args, msg, tt.want)
 		}
+	}
+}
+
+// タグの一覧を、settings.yaml の並びで返す。一覧がなければ空の一覧を返す。
+func TestListTags(t *testing.T) {
+	root := newRoot(t)
+	cs, _ := connectTo(t, root)
+	var out tagsOutput
+	if msg := call(t, cs, "list_tags", map[string]any{}, &out); msg != "" {
+		t.Fatal(msg)
+	}
+	if out.Tags == nil || len(out.Tags) != 0 {
+		t.Errorf("tags = %#v", out.Tags)
+	}
+
+	write(t, root, "settings.yaml", "tags: [ふりかえり, 調査]\n")
+	if msg := call(t, cs, "list_tags", map[string]any{}, &out); msg != "" {
+		t.Fatal(msg)
+	}
+	if !slices.Equal(out.Tags, []string{"ふりかえり", "調査"}) {
+		t.Errorf("tags = %q", out.Tags)
 	}
 }

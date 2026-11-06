@@ -132,7 +132,7 @@ export function RecordRow({ record, open, onOpen, handle }: Props) {
 
 // RecordDetail は、たまにしか直さない項目をまとめた詳しい表示。
 function RecordDetail({ record }: { record: Record }) {
-	const { date, run, projects } = useDay();
+	const { date, run, projects, tags } = useDay();
 	// 消すと時間やメモごと消え、元に戻せないので、確かめてから消す。
 	const [removing, setRemoving] = useState(false);
 	const update = (patch: RecordPatch) =>
@@ -168,6 +168,7 @@ function RecordDetail({ record }: { record: Record }) {
 			<TagsInput
 				label="タグ"
 				size="xs"
+				data={tags}
 				value={record.tags ?? []}
 				onChange={(tags) => update({ tags })}
 			/>

@@ -118,7 +118,9 @@ type Opened struct {
 	Day Day `json:"day"`
 	// Projects は、その日に使えるプロジェクト。
 	Projects []Project `json:"projects"`
-	Tasks    TaskLists `json:"tasks"`
+	// Tags は、タグの一覧。タグを入力するときの候補。
+	Tags  []string  `json:"tags"`
+	Tasks TaskLists `json:"tasks"`
 }
 
 // Open は、その日を開いたときに画面に出すものを返す。
@@ -135,7 +137,7 @@ func (s *Service) open(d time.Time) (Opened, error) {
 	if err != nil {
 		return Opened{}, err
 	}
-	out := Opened{Day: newDay(o.Day), Projects: []Project{}, Tasks: newTaskLists(o.Tasks)}
+	out := Opened{Day: newDay(o.Day), Projects: []Project{}, Tags: append([]string{}, o.Tags...), Tasks: newTaskLists(o.Tasks)}
 	for _, p := range o.Projects {
 		out.Projects = append(out.Projects, Project{Code: p.Code, Name: p.Name})
 	}

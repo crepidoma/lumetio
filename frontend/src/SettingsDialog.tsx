@@ -20,6 +20,7 @@ import { NoteDefsSection } from "./NoteDefsSection";
 import { OutputsSection } from "./OutputsSection";
 import { ProjectsSection } from "./ProjectsSection";
 import { SaveButton, type SectionProps, useSave } from "./SettingsSection";
+import { TagsSection } from "./TagsSection";
 import { usePreview } from "./usePreview";
 
 type Props = {
@@ -35,7 +36,13 @@ type Props = {
 	reload: () => void;
 };
 
-type Section = "locations" | "projects" | "outputs" | "notes" | "duration";
+type Section =
+	| "locations"
+	| "projects"
+	| "outputs"
+	| "notes"
+	| "tags"
+	| "duration";
 
 // SettingsDialog は設定画面。項目ごとに「保存」で書く。
 export function SettingsDialog({
@@ -98,6 +105,7 @@ export function SettingsDialog({
 						<Tabs.Tab value="projects">プロジェクト</Tabs.Tab>
 						<Tabs.Tab value="outputs">出力</Tabs.Tab>
 						<Tabs.Tab value="notes">メモ欄</Tabs.Tab>
+						<Tabs.Tab value="tags">タグ</Tabs.Tab>
 						<Tabs.Tab value="duration">長さの表記</Tabs.Tab>
 					</Tabs.List>
 					<Tabs.Panel value="locations">
@@ -128,6 +136,9 @@ export function SettingsDialog({
 							onSaved={reload}
 							reload={reload}
 						/>
+					</Tabs.Panel>
+					<Tabs.Panel value="tags">
+						<TagsSection onDirty={setDirty} onSaved={reload} reload={reload} />
 					</Tabs.Panel>
 					<Tabs.Panel value="duration">
 						<DurationSection

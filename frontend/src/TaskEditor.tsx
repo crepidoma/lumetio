@@ -38,6 +38,8 @@ type Props = {
 	date: string;
 	// projects は、その日に使える (期間の中の) プロジェクト。
 	projects: Project[];
+	// tagList は、タグの一覧。タグを入力するときの候補。
+	tagList: string[];
 	// target は編集するタスクの名前。空文字なら新しく作る。null なら閉じている。
 	target: string | null;
 	onClose: () => void;
@@ -50,6 +52,7 @@ type Props = {
 export function TaskEditor({
 	date,
 	projects,
+	tagList,
 	target,
 	onClose,
 	onChanged,
@@ -91,6 +94,7 @@ export function TaskEditor({
 					key={target}
 					date={date}
 					projects={projects}
+					tagList={tagList}
 					original={target}
 					initial={loaded}
 					onClose={onClose}
@@ -115,6 +119,7 @@ const emptyTask: TaskEdit = {
 type FormProps = {
 	date: string;
 	projects: Project[];
+	tagList: string[];
 	original: string;
 	initial: TaskEdit;
 	onClose: () => void;
@@ -125,6 +130,7 @@ type FormProps = {
 function EditorForm({
 	date,
 	projects: projectsNow,
+	tagList,
 	original,
 	initial,
 	onClose,
@@ -228,7 +234,7 @@ function EditorForm({
 				data={projectOptions}
 				onChange={setProjectText}
 			/>
-			<TagsInput label="タグ" value={tags} onChange={setTags} />
+			<TagsInput label="タグ" data={tagList} value={tags} onChange={setTags} />
 			<Checkbox
 				label="計上しない"
 				checked={exclude}

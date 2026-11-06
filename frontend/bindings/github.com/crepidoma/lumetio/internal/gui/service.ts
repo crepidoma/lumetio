@@ -268,6 +268,13 @@ export function SaveProjects(base: $models.ProjectRow[] | null, rows: $models.Pr
 }
 
 /**
+ * SaveTags はタグの一覧を書く。base は読んだときの一覧。
+ */
+export function SaveTags(base: string[] | null, tags: string[] | null): $CancellablePromise<void> {
+    return $Call.ByID(2404965591, base, tags);
+}
+
+/**
  * SaveTask は、タスクの編集で直した値を書く。original は直す前のタスク名で、新しく作るときは空にする。
  * base は編集を開いたときに TaskEdit で受け取った値で、新しく作るときは nil にする。開いているあいだに他で変わっていないかを確かめるため。
  * 予定や左ペインの一覧も変わるので、画面は書いた後にその日を読み直す。
@@ -327,6 +334,13 @@ export function SkipPlans(date: string, titles: string[] | null): $CancellablePr
  */
 export function StartSearch(): $CancellablePromise<string[] | null> {
     return $Call.ByID(1291421517);
+}
+
+/**
+ * TagRows は、タグの一覧を候補の順で返す。
+ */
+export function TagRows(): $CancellablePromise<string[] | null> {
+    return $Call.ByID(4171123812);
 }
 
 /**

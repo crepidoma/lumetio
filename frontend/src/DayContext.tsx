@@ -9,6 +9,8 @@ export type DayContextValue = {
 	date: string;
 	day: Day;
 	projects: Project[];
+	// tags は、タグの一覧。タグを入力するときの候補。
+	tags: string[];
 	// act は、その日を書き換える操作を呼び、書いた後のその日を画面に出す。
 	// 入力の誤りがあれば、その文を返す。
 	act: (op: () => Promise<Opened>) => Promise<string | null>;

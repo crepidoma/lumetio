@@ -1,6 +1,7 @@
 package settings
 
 import (
+	"slices"
 	"testing"
 	"time"
 )
@@ -16,6 +17,7 @@ notes:
     type: bool
     carry_over: true
   - name: 連絡
+tags: [ふりかえり, 調査]
 duration_format: H'h'm'm'
 default_output: 日報
 `
@@ -66,6 +68,10 @@ func TestParse(t *testing.T) {
 		}
 	}
 
+	if !slices.Equal(s.Tags, []string{"ふりかえり", "調査"}) {
+		t.Errorf("Tags = %q", s.Tags)
+	}
+
 	if s.DurationFormat != "H'h'm'm'" || s.DefaultOutput != "日報" {
 		t.Errorf("DurationFormat = %q, DefaultOutput = %q", s.DurationFormat, s.DefaultOutput)
 	}
@@ -77,7 +83,7 @@ func TestParseEmptyUsesDefaults(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Parse(%q): %v", input, err)
 		}
-		if s.DurationFormat != DefaultDurationFormat || len(s.Projects) != 0 || len(s.Notes) != 0 || s.DefaultOutput != "" {
+		if s.DurationFormat != DefaultDurationFormat || len(s.Projects) != 0 || len(s.Notes) != 0 || len(s.Tags) != 0 || s.DefaultOutput != "" {
 			t.Errorf("Parse(%q) = %+v", input, s)
 		}
 	}
@@ -113,6 +119,8 @@ func TestParseErrors(t *testing.T) {
 		"メモ欄に name がない":    "notes:\n  - type: bool\n",
 		"メモ欄の名前が重なる":       "notes:\n  - name: a\n  - name: a\n",
 		"メモ欄の型が使えない":       "notes:\n  - name: a\n    type: choice\n",
+		"タグが空":             "tags: [a, ' ']\n",
+		"タグが重なる":           "tags: [a, a]\n",
 		"長さの書式が使えない":       "duration_format: 'h:mm'\n",
 		"YAML として壊れている":    "projects: [\n",
 	}
