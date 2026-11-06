@@ -9,6 +9,7 @@ import {
 import { call, showInputError } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
 import { Plus } from "./icons";
+import { useReportDirty } from "./SettingsSection";
 import { TemplateEditor } from "./TemplateEditor";
 
 type Props = {
@@ -127,7 +128,7 @@ export function OutputsSection({ date, onDirty, onSaved, reload }: Props) {
 		);
 	};
 	const dirty = Object.keys(drafts).some(isDirty);
-	useEffect(() => onDirty(dirty), [dirty, onDirty]);
+	useReportDirty(dirty, onDirty);
 
 	if (!list) return null;
 

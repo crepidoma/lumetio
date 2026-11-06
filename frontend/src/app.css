@@ -138,6 +138,13 @@ body {
 	white-space: nowrap;
 }
 
+/* 計上しない、完了など記録の状態の札。タグと見分けられるよう、地色を塗らずに枠線で出す。枠線は内側に描き、タグと大きさをそろえる。 */
+.badge.state {
+	background: transparent;
+	color: var(--text-sub);
+	box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
 .kbd {
 	font-family: var(--mono);
 	font-size: 11px;
@@ -506,6 +513,29 @@ body {
 	gap: 6px;
 }
 
+/* 記録の行の上の部分。左にタスク名と札の 2 段、右に合計を置き、合計は 2 段の高さの真ん中にそろえる。 */
+.row-top {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+/* タスク名と札の 2 段。タスク名の欄は、空いたところを押したときに名前の編集にならないよう、文字の幅のままにする。 */
+.row-main {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 4px;
+}
+
+.row-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
 .row-title {
 	all: unset;
 	cursor: text;
@@ -547,10 +577,10 @@ body {
 	font-weight: 500;
 }
 
+/* 「不定」は合計の時間と同じ書体と太さにする。等幅の書体には漢字がなく別の書体で描かれ、同じ大きさでは数字より大きく見えるので、小さくして見た目をそろえる。 */
 .row-total.untimed {
 	color: var(--text-sub);
-	font-family: inherit;
-	font-weight: 400;
+	font-size: 12px;
 }
 
 .row-project {
@@ -586,6 +616,14 @@ body {
 	color: var(--accent-strong);
 	font-family: var(--mono);
 	font-size: 12px;
+}
+
+/* いつもの時間を時間不定にしたタスクの予定。記録の行の「不定」と同じ見た目にし、チップの並びの中に置く。 */
+.plan-untimed {
+	color: var(--text-sub);
+	font-family: var(--mono);
+	font-size: 12px;
+	font-weight: 500;
 }
 
 .plan-chip {

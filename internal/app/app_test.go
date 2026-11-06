@@ -270,11 +270,11 @@ func TestUpdateRecord(t *testing.T) {
 		t.Errorf("調査 = %+v", got)
 	}
 
-	// 空にすると時間不定、プロジェクトのコードを空にすると外す。
+	// 時間を空にすると時間が消えて時間未入力になり (時間不定にはならない)、プロジェクトのコードを空にすると外す。
 	if _, err := f.app.UpdateRecord(today, "調査", RecordPatch{Time: ptr(""), Project: &dayfile.Project{}}); err != nil {
 		t.Fatal(err)
 	}
-	if got := task(f.day(today), "調査"); len(got.Time) != 0 || got.Project.Code != "" {
+	if got := task(f.day(today), "調査"); len(got.Time) != 0 || got.Untimed || got.Project.Code != "" {
 		t.Errorf("調査 = %+v", got)
 	}
 
@@ -421,7 +421,7 @@ func TestPreviewTime(t *testing.T) {
 func TestDayOutOfPeriod(t *testing.T) {
 	f := newFixture(t)
 	f.write("settings.yaml", "projects:\n  - code: DEV-001\n  - code: OLD-01\n    until: 2026-10-31\n  - code: NEXT-01\n    start: 2026-11-06\n")
-	f.write("days/2026/2026-11-05.yaml", "date: 2026-11-05\ntasks:\n  - title: a\n    project:\n      code: OLD-01\n  - title: b\n    project:\n      code: DEV-001\n  - title: c\n    project:\n      code: OLD-01\n  - title: d\n    project:\n      code: NEXT-01\n")
+	f.write("days/2026/2026-11-05.yaml", "date: 2026-11-05\ntasks:\n  - title: a\n    project:\n      code: OLD-01\n    time: [30m]\n  - title: b\n    project:\n      code: DEV-001\n    time: [30m]\n  - title: c\n    project:\n      code: OLD-01\n    time: [30m]\n  - title: d\n    project:\n      code: NEXT-01\n    time: [30m]\n")
 	view, err := f.app.Day(today)
 	if err != nil {
 		t.Fatal(err)
@@ -580,7 +580,7 @@ func TestRenderAndExport(t *testing.T) {
 	f := newFixture(t)
 	f.write("templates/日報テキスト.tmpl", "---\nfile: \"'report_'yyyyMMdd\"\nextension: txt\n---\n{{range .tasks}}{{.title}}\n{{end}}")
 	f.write("templates/日報.set.yaml", "kind: set\noutputs: [日報テキスト]\n")
-	f.write("days/2026/2026-11-05.yaml", "date: 2026-11-05\ntasks:\n  - title: 片付け\n    project:\n      code: OLD-01\n")
+	f.write("days/2026/2026-11-05.yaml", "date: 2026-11-05\ntasks:\n  - title: 片付け\n    project:\n      code: OLD-01\n    time: [30m]\n")
 
 	// 名前を省略すると既定の出力。期間の外のプロジェクトは警告して、出力は止めない。
 	r, err := f.app.Render(today, "")

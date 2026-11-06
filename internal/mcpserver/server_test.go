@@ -244,13 +244,14 @@ func TestListTags(t *testing.T) {
 
 func TestGetDaysMarksUntimed(t *testing.T) {
 	root := newRoot(t)
-	write(t, root, "days/2026/2026-11-05.yaml", "date: 2026-11-05\ntasks:\n  - title: 調査\n  - title: 朝会\n    time: ['09:00-09:15']\n")
+	write(t, root, "days/2026/2026-11-05.yaml", "date: 2026-11-05\ntasks:\n  - title: 調査\n    untimed: true\n  - title: 朝会\n    time: ['09:00-09:15']\n  - title: 設計\n")
 	cs, _ := connectTo(t, root)
 	var raw map[string]any
 	if msg := call(t, cs, "get_days", map[string]any{}, &raw); msg != "" {
 		t.Fatal(msg)
 	}
-	records := raw["days"].([]any)[0].(map[string]any)["records"].([]any)
+	day := raw["days"].([]any)[0].(map[string]any)
+	records := day["records"].([]any)
 	// 時間不定の記録は、0 分と読まれないよう、時間の合計を返さずに untimed を付ける。
 	untimed := records[0].(map[string]any)
 	if _, ok := untimed["minutes"]; ok || untimed["untimed"] != true {
@@ -260,12 +261,77 @@ func TestGetDaysMarksUntimed(t *testing.T) {
 	if _, ok := timed["untimed"]; ok || timed["minutes"] != 15.0 {
 		t.Errorf("時間のある記録 = %v", timed)
 	}
+	// 時間未入力の記録は、時間も untimed もなく、入れ忘れとして警告する。
+	missing := records[2].(map[string]any)
+	if _, ok := missing["minutes"]; ok || missing["untimed"] != nil || len(missing["time"].([]any)) != 0 {
+		t.Errorf("時間未入力の記録 = %v", missing)
+	}
+	if w := day["warnings"].([]any); len(w) != 1 || w[0] != "設計 の時間が入っていません" {
+		t.Errorf("warnings = %v", w)
+	}
+}
+
+// AI が時間を入れ忘れた記録を、黙って時間未入力や時間不定で作らない。時間不定は untimed で明示する。
+func TestAddRecordsNeedsTimeOrUntimed(t *testing.T) {
+	root := newRoot(t)
+	write(t, root, "items.yaml", itemsYAML+"- title: 情報収集\n  untimed: true\n  favorite: true\n")
+	cs, _ := connectTo(t, root)
+	if msg := call(t, cs, "add_records", map[string]any{"records": []any{map[string]any{"title": "調査"}}}, nil); !strings.Contains(msg, "untimed") {
+		t.Errorf("時間も時間不定もない: %q", msg)
+	}
+	if msg := call(t, cs, "add_records", map[string]any{"records": []any{
+		map[string]any{"title": "調査", "untimed": true},
+		map[string]any{"title": "情報収集"},
+	}}, nil); msg != "" {
+		t.Fatal(msg)
+	}
+	var out daysOutput
+	if msg := call(t, cs, "get_days", map[string]any{}, &out); msg != "" {
+		t.Fatal(msg)
+	}
+	for _, r := range out.Days[0].Records {
+		if !r.Untimed {
+			t.Errorf("%s = %+v, want 時間不定", r.Title, r)
+		}
+	}
+
+	// 時間不定を外すときは時間を入れ、時間がある記録を時間不定にするときは時間を消す。
+	if msg := call(t, cs, "update_record", map[string]any{"title": "調査", "time": "30m"}, nil); msg != "" {
+		t.Fatal(msg)
+	}
+	if msg := call(t, cs, "update_record", map[string]any{"title": "調査", "untimed": true}, nil); !strings.Contains(msg, "時間不定にできません") {
+		t.Errorf("時間がある記録を時間不定に: %q", msg)
+	}
+	if msg := call(t, cs, "update_record", map[string]any{"title": "調査", "time": "", "untimed": true}, nil); msg != "" {
+		t.Fatal(msg)
+	}
+}
+
+// いつもの時間を時間不定にしたタスクは、一覧と予定で untimed を付ける。時間を省略して足すと時間不定で入ることを伝えるため。
+func TestListTasksAndPlansUntimed(t *testing.T) {
+	root := newRoot(t)
+	write(t, root, "items.yaml", "- title: 情報収集\n  untimed: true\n  repeat:\n    freq: daily\n")
+	cs, _ := connectTo(t, root)
+	var tasks taskListsOutput
+	if msg := call(t, cs, "list_tasks", map[string]any{}, &tasks); msg != "" {
+		t.Fatal(msg)
+	}
+	if len(tasks.RepeatingToday) != 1 || !tasks.RepeatingToday[0].Untimed {
+		t.Errorf("repeating_today = %+v", tasks.RepeatingToday)
+	}
+	var days daysOutput
+	if msg := call(t, cs, "get_days", map[string]any{}, &days); msg != "" {
+		t.Fatal(msg)
+	}
+	if p := days.Days[0].Plans; len(p) != 1 || !p[0].Untimed {
+		t.Errorf("plans = %+v", p)
+	}
 }
 
 // 計上する時間がなく、時間不定の記録があるプロジェクトの合計は、0 分と読まれないよう時間を返さない。
 func TestGetDaysProjectTotalUntimed(t *testing.T) {
 	root := newRoot(t)
-	write(t, root, "days/2026/2026-11-05.yaml", "date: 2026-11-05\ntasks:\n  - title: 調査\n    project:\n      code: DEV-001\n  - title: 雑談\n    project:\n      code: ETC-01\n    exclude: true\n    time: [30m]\n")
+	write(t, root, "days/2026/2026-11-05.yaml", "date: 2026-11-05\ntasks:\n  - title: 調査\n    project:\n      code: DEV-001\n    untimed: true\n  - title: 雑談\n    project:\n      code: ETC-01\n    exclude: true\n    time: [30m]\n")
 	cs, _ := connectTo(t, root)
 	var raw map[string]any
 	if msg := call(t, cs, "get_days", map[string]any{}, &raw); msg != "" {
@@ -286,7 +352,7 @@ func TestGetDaysProjectTotalUntimed(t *testing.T) {
 func TestGetDaysPeriodTotals(t *testing.T) {
 	root := newRoot(t)
 	write(t, root, "days/2026/2026-11-03.yaml", "date: 2026-11-03\ntasks:\n  - title: 調査\n    project:\n      code: DEV-001\n      name: 新機能\n    time: [60m]\n  - title: 雑務\n    time: [15m]\n")
-	write(t, root, "days/2026/2026-11-04.yaml", "date: 2026-11-04\ntasks:\n  - title: 会議\n    project:\n      code: MTG-01\n  - title: 調査\n    project:\n      code: DEV-001\n      name: 新機能\n    time: [90m]\n")
+	write(t, root, "days/2026/2026-11-04.yaml", "date: 2026-11-04\ntasks:\n  - title: 会議\n    project:\n      code: MTG-01\n    untimed: true\n  - title: 調査\n    project:\n      code: DEV-001\n      name: 新機能\n    time: [90m]\n")
 	cs, _ := connectTo(t, root)
 
 	var out daysOutput

@@ -27,7 +27,8 @@ func New(a *app.App, version string) *mcp.Server {
 			"日付は YYYY-MM-DD で、省略すると今日。" +
 			"記録は、その日のタスク名で指す。" +
 			"記録を足す前に list_tasks で既存のタスク名を確かめ、同じタスクには同じ名前を使う。" +
-			"時間不定 (untimed) の記録は、時間を決めずに記録したもので、入れ忘れとは限らない。日報には載り、工数の合計には足さない。時間不定の記録に時間を入れるのは、ユーザーに頼まれたときだけにする。" +
+			"時間不定 (untimed: true) の記録は、時間を決めずに記録したもの。工数では、出勤した時間から時間を入れた分を引いた残りを、時間不定の記録のプロジェクトに均等に割り振る (工数システムに入れるときにユーザーが行う)。工数に乗らないわけではない。日報には載り、アプリの合計には足さない。時間不定の記録に時間を入れるのは、ユーザーに頼まれたときだけにする。" +
+			"時間未入力 (time が空で untimed でもない記録) は、時間の入れ忘れ。ユーザーに時間を尋ねてよい。" +
 			"計上しない (exclude) の記録は、日報には載り、工数には入らない。" +
 			"予定 (plans) は、定期的なタスクからその日に出ている、まだ記録にしていないもの。日報にも工数にも入らない。add_records で同じ名前のタスクを足すと記録になり、skip_plans でその日だけ消せる。" +
 			"完了 (done) は、終わったタスクを直近のタスクの一覧から外す印。" +
@@ -59,7 +60,8 @@ func New(a *app.App, version string) *mcp.Server {
 		Name: "add_records",
 		Description: "その日の記録にタスクをまとめて足す。1 つでも誤りがあれば何も書かない。" +
 			"予定と同じ名前のタスクを足すと、予定は記録になる (実施済)。" +
-			"時間を省略すると、いつもの時間で入る。いつもの時間がなければ、時間不定で入る。" +
+			"時間を省略すると、いつもの時間で入る (いつもの時間を時間不定にしたタスクなら時間不定)。" +
+			"時間がない記録になるとき (時間もいつもの時間もない、時間に空文字を渡した) は、時間を入れ忘れた記録を作らないよう、何も書かずにエラーにする。時間を決めないときは untimed に true を指定して時間不定にする。" +
 			"プロジェクトなどを省略すると、タスクの設定か、そのタスクの一番新しい記録から写す。" +
 			"その日にもう同じタスクの記録があれば、時間だけを足す。",
 	}, h.addRecords)
@@ -67,6 +69,7 @@ func New(a *app.App, version string) *mcp.Server {
 		Name: "update_record",
 		Description: "その日の記録を直す。指定した項目だけを変える。" +
 			"タスク名 (new_title) は打ち間違いを直すためのもので、その日の記録の名前だけを変える。" +
+			"時間を入れると時間不定は外れる。時間がある記録を時間不定にするときは、time に空文字を渡して時間を消し、untimed に true を指定する。" +
 			"完了 (done) は、そのタスクを最後に記録した日の記録に付ける。完了にしたタスクは、直近のタスクに出なくなる。",
 	}, h.updateRecord)
 	mcp.AddTool(s, &mcp.Tool{
@@ -216,9 +219,10 @@ func (h handlers) addRecords(_ context.Context, _ *mcp.CallToolRequest, in addRe
 			Tags:    r.Tags,
 			Note:    r.Note,
 			Exclude: r.Exclude,
+			Untimed: r.Untimed,
 		})
 	}
-	warnings, err := h.app.AddRecords(date, recs)
+	warnings, err := h.app.AddRecordsExplicit(date, recs)
 	if err != nil {
 		return nil, writeOutput{}, toolError(err)
 	}
@@ -233,6 +237,7 @@ func (h handlers) updateRecord(_ context.Context, _ *mcp.CallToolRequest, in upd
 	warnings, err := h.app.UpdateRecord(date, in.Title, app.RecordPatch{
 		Title:   in.NewTitle,
 		Time:    in.Time,
+		Untimed: in.Untimed,
 		Project: in.Project.toApp(),
 		Tags:    in.Tags,
 		Note:    in.Note,

@@ -10,7 +10,7 @@ import {
 	Text,
 	TextInput,
 } from "@mantine/core";
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import {
 	type ProjectRow,
 	Service,
@@ -23,6 +23,7 @@ import { reorderShown } from "./project";
 import {
 	SaveButton,
 	type SectionProps,
+	useReportDirty,
 	useRows,
 	useSave,
 } from "./SettingsSection";
@@ -36,7 +37,7 @@ export function ProjectsSection({ onDirty, onSaved, reload }: SectionProps) {
 	const [showExpired, setShowExpired] = useState(false);
 	// csv は取り込むために読んだ CSV。null なら取り込みのダイアログを閉じている。
 	const [csv, setCsv] = useState<string[][] | null>(null);
-	useEffect(() => onDirty(t.dirty), [t.dirty, onDirty]);
+	useReportDirty(t.dirty, onDirty);
 
 	if (t.base === null) return null;
 	const base = t.base;

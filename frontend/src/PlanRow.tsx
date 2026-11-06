@@ -33,6 +33,8 @@ export function PlanRow({ plan }: { plan: Plan }) {
 			</div>
 			{plan.project && <div className="row-project">{plan.project.name}</div>}
 			<div className="row-times">
+				{/* いつもの時間を時間不定にしたタスクは、記録の行と同じく「不定」と出す。 */}
+				{plan.untimed && <span className="plan-untimed">不定</span>}
 				{(plan.times ?? []).map((t, i) => (
 					<span
 						// biome-ignore lint/suspicious/noArrayIndexKey: いつもの時間には同じ時間が並ぶこともあるので、位置を key に入れる。

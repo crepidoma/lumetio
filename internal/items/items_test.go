@@ -44,6 +44,8 @@ const sample = `- title: 朝会
   exclude: true
   time: [30m, '17:00-17:30']
   favorite: true
+- title: 調べもの
+  untimed: true
 `
 
 func TestRoundTrip(t *testing.T) {
@@ -69,7 +71,7 @@ func TestParse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(items) != 7 {
+	if len(items) != 8 {
 		t.Fatalf("len(items) = %d", len(items))
 	}
 
@@ -98,6 +100,10 @@ func TestParse(t *testing.T) {
 	favorite := items[6]
 	if !favorite.Favorite || !favorite.Exclude || favorite.Repeat != nil || len(favorite.Time) != 2 || len(favorite.Tags) != 1 {
 		t.Errorf("items[6] = %+v", favorite)
+	}
+	// いつもの時間を時間不定にしたことは、それだけで設定になる。
+	if u := items[7]; !u.Untimed || len(u.Time) != 0 || !u.HasSettings() {
+		t.Errorf("items[7] = %+v", u)
 	}
 }
 
@@ -158,6 +164,7 @@ func TestParseErrors(t *testing.T) {
 		"タイトルが重なる":                  "- title: a\n  favorite: true\n- title: a\n  exclude: true\n",
 		"プロジェクトに code がない":          "- title: a\n  project:\n    name: b\n",
 		"時間が保存形式でない":                "- title: a\n  time: [9-10]\n",
+		"時間と時間不定の両方":                "- title: a\n  time: [30m]\n  untimed: true\n",
 		"繰り返しの知らないキー":               "- title: a\n  repeat:\n    freq: daily\n    count: 3\n",
 		"freq がない":                  "- title: a\n  repeat:\n    by_day: [mo]\n",
 		"freq が使えない":                "- title: a\n  repeat:\n    freq: yearly\n",
@@ -186,5 +193,17 @@ func TestParseErrors(t *testing.T) {
 		if _, err := Parse([]byte(input)); err == nil {
 			t.Errorf("%s: Parse succeeded, want error", name)
 		}
+	}
+}
+
+// いつもの時間と時間不定の両方を持つタスクは、書いても読めない items.yaml になるので、書く前に止める。
+func TestMarshalRejectsTimeAndUntimed(t *testing.T) {
+	list, err := Parse([]byte("- title: a\n  time: [30m]\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	list[0].Untimed = true
+	if _, err := Marshal(list); err == nil {
+		t.Error("Marshal succeeded, want error")
 	}
 }

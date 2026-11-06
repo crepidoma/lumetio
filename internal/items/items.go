@@ -24,16 +24,18 @@ type Item struct {
 	Exclude bool
 	// Time はいつもの時間。
 	Time []timeexpr.Entry
+	// Untimed は、いつもの時間を時間不定にすること。Time とは一緒に持たない。
+	Untimed bool
 	// Repeat が nil なら定期的なタスクではない。
 	Repeat   *Repeat
 	Favorite bool
 }
 
-// HasSettings は、タスクに設定 (よく使う、いつもの時間、繰り返し) があるかを返す。
+// HasSettings は、タスクに設定 (よく使う、いつもの時間、繰り返し) があるかを返す。時間不定は、いつもの時間の設定の 1 つ。
 // プロジェクト、タグ、計上しないは、設定を付けたタスクを記録するときに使う値で、それだけでは設定ではない。
 // 設定をすべて外したタスクは、items.yaml に残さない。
 func (it Item) HasSettings() bool {
-	return len(it.Time) > 0 || it.Repeat != nil || it.Favorite
+	return len(it.Time) > 0 || it.Untimed || it.Repeat != nil || it.Favorite
 }
 
 // Repeat はタスクの繰り返し。
@@ -103,6 +105,7 @@ type rawItem struct {
 	Tags     []string             `yaml:"tags"`
 	Exclude  bool                 `yaml:"exclude"`
 	Time     []string             `yaml:"time"`
+	Untimed  bool                 `yaml:"untimed"`
 	Repeat   *rawRepeat           `yaml:"repeat"`
 	Favorite bool                 `yaml:"favorite"`
 }
@@ -135,13 +138,17 @@ func Parse(data []byte) ([]Item, error) {
 		}
 		titles[ri.Title] = true
 
-		it := Item{Title: ri.Title, Tags: ri.Tags, Exclude: ri.Exclude, Favorite: ri.Favorite}
+		it := Item{Title: ri.Title, Tags: ri.Tags, Exclude: ri.Exclude, Untimed: ri.Untimed, Favorite: ri.Favorite}
 		var err error
 		if it.Project, err = ri.Project.Project(); err != nil {
 			return nil, fmt.Errorf("タスク %q: %w", ri.Title, err)
 		}
 		if it.Time, err = dayfile.ParseTimes(ri.Time); err != nil {
 			return nil, fmt.Errorf("タスク %q: %w", ri.Title, err)
+		}
+		// いつもの時間があるのか時間不定なのか決まらないので、両方は持たない。
+		if it.Untimed && len(it.Time) > 0 {
+			return nil, fmt.Errorf("タスク %q: time と untimed は一緒に書けません", ri.Title)
 		}
 		if ri.Repeat != nil {
 			r, err := parseRepeat(ri.Repeat)
@@ -248,6 +255,10 @@ func Marshal(items []Item) ([]byte, error) {
 		if !it.HasSettings() {
 			continue
 		}
+		// いつもの時間と時間不定の両方を持つタスクは、読むときにエラーになる。書いてから開けなくならないよう、書く前に止める。
+		if it.Untimed && len(it.Time) > 0 {
+			return nil, fmt.Errorf("タスク %q はいつもの時間と時間不定の両方を持っています", it.Title)
+		}
 		root.Content = append(root.Content, itemNode(it))
 	}
 
@@ -276,6 +287,9 @@ func itemNode(it Item) *yaml.Node {
 	}
 	if len(it.Time) > 0 {
 		yamlfile.Add(n, "time", dayfile.TimesNode(it.Time))
+	}
+	if it.Untimed {
+		yamlfile.Add(n, "untimed", yamlfile.Bool(true))
 	}
 	if it.Repeat != nil {
 		yamlfile.Add(n, "repeat", repeatNode(*it.Repeat))

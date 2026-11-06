@@ -80,7 +80,7 @@ func (a *App) dayView(date time.Time, s state) (DayView, error) {
 		Plans:          tasklist.Plans(day, s.items),
 		NoteDefs:       s.settings.Notes,
 		Summary:        effort.Summarize(day),
-		Warnings:       periodWarnings(out),
+		Warnings:       append(periodWarnings(out), missingTimeWarnings(day)...),
 		DurationFormat: s.settings.DurationFormat,
 	}
 	for _, p := range out {

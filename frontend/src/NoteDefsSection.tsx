@@ -1,11 +1,12 @@
 import { Checkbox, Modal, Select, TextInput } from "@mantine/core";
-import { useEffect, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Service } from "../bindings/github.com/crepidoma/lumetio/internal/gui";
 import { DiscardConfirm } from "./ConfirmModal";
 import { AddRowButton, EditTable } from "./EditTable";
 import {
 	SaveButton,
 	type SectionProps,
+	useReportDirty,
 	useRows,
 	useSave,
 } from "./SettingsSection";
@@ -19,7 +20,7 @@ const types = [
 export function NoteDefsSection({ onDirty, onSaved, reload }: SectionProps) {
 	const t = useRows(Service.NoteDefRows, reload);
 	const { saving, error, save } = useSave(reload, t.rows);
-	useEffect(() => onDirty(t.dirty), [t.dirty, onDirty]);
+	useReportDirty(t.dirty, onDirty);
 
 	if (t.base === null) return null;
 	const base = t.base;
@@ -94,11 +95,16 @@ export function NoteDefsDialog({
 	onClose: () => void;
 	reload: () => void;
 }) {
-	const [dirty, setDirty] = useState(false);
+	// dirty は保存していない変更があるか。画面には出さず、閉じるときに今の値を読むだけなので ref で持つ。
+	// Esc で呼ばれる閉じる処理が前に描いたときのものでも、今の値を見るようにするため。
+	const dirty = useRef(false);
+	const setDirty = useCallback((d: boolean) => {
+		dirty.current = d;
+	}, []);
 	const [confirming, setConfirming] = useState(false);
-	const requestClose = () => (dirty ? setConfirming(true) : onClose());
+	const requestClose = () => (dirty.current ? setConfirming(true) : onClose());
 	const close = () => {
-		setDirty(false);
+		dirty.current = false;
 		onClose();
 	};
 	return (

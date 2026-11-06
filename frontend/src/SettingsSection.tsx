@@ -1,5 +1,11 @@
 import { Button, Group, Text } from "@mantine/core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import { call, writeFailed } from "./api";
 import { sortedBy } from "./Sortable";
 
@@ -9,6 +15,15 @@ export type SectionProps = {
 	onSaved: () => void;
 	reload: () => void;
 };
+
+// useReportDirty は、項目に保存していない変更があるかを、項目を開いているダイアログに知らせる。
+// 描き終えた時点で同期的に知らせる。描いた後の effect で知らせると、打った直後の Esc がそれより先に届き、変更がないものとして確かめずに閉じることがあるため。
+export function useReportDirty(
+	dirty: boolean,
+	onDirty: (dirty: boolean) => void,
+) {
+	useLayoutEffect(() => onDirty(dirty), [dirty, onDirty]);
+}
 
 // useSave は「保存」を押したときの流れ。保存中か、保存できなかった入力の誤りを持つ。
 // 保存できたら saved を、他で変わっていて保存できなかったら読み直す load を呼ぶ。

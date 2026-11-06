@@ -39,8 +39,10 @@ type Record struct {
 	Exclude     bool        `json:"exclude"`
 	Done        bool        `json:"done"`
 	Times       []TimeEntry `json:"times"`
-	// Total は合計を長さの表記で書いたもの。時間不定なら空。
+	// Total は合計を長さの表記で書いたもの。時間不定なら空、時間未入力なら 0 を書く。
 	Total string `json:"total"`
+	// Untimed は時間不定。
+	Untimed bool `json:"untimed"`
 }
 
 // Plan は、まだ記録にしていない予定。
@@ -48,6 +50,8 @@ type Plan struct {
 	Title   string      `json:"title"`
 	Project *Project    `json:"project"`
 	Times   []TimeEntry `json:"times"`
+	// Untimed は、いつもの時間を時間不定にしたタスクの予定。
+	Untimed bool `json:"untimed"`
 }
 
 // Note はメモ欄 1 つ。
@@ -89,8 +93,10 @@ type NewRecord struct {
 // RecordPatch は、記録を直すときの指定。nil の項目は変えない。
 type RecordPatch struct {
 	Title *string `json:"title,omitempty"`
-	// Time は時間の並びをまるごと置き換える。空文字なら時間不定にする。
+	// Time は時間の並びをまるごと置き換える。空文字なら時間を消す。時間を入れると時間不定は外れる。
 	Time *string `json:"time,omitempty"`
+	// Untimed は時間不定にするか。時間がある記録は時間不定にできない。
+	Untimed *bool `json:"untimed,omitempty"`
 	// Project のコードが空なら、プロジェクトを外す。
 	Project *Project  `json:"project,omitempty"`
 	Tags    *[]string `json:"tags,omitempty"`
@@ -167,6 +173,7 @@ func newDay(v app.DayView) Day {
 			Exclude:     t.Exclude,
 			Done:        t.Done,
 			Times:       timeEntries(t.Time, f),
+			Untimed:     t.Untimed,
 		}
 		if !t.Untimed {
 			r.Total = f.Format(t.Minutes)
@@ -174,7 +181,7 @@ func newDay(v app.DayView) Day {
 		out.Records = append(out.Records, r)
 	}
 	for _, p := range v.Plans {
-		out.Plans = append(out.Plans, Plan{Title: p.Title, Project: projectOf(p.Project), Times: timeEntries(p.Time, f)})
+		out.Plans = append(out.Plans, Plan{Title: p.Title, Project: projectOf(p.Project), Times: timeEntries(p.Time, f), Untimed: p.Untimed})
 	}
 	for _, n := range v.Notes {
 		note := Note{Name: n.Name, Type: string(settings.NoteText), Text: n.Text, Bool: n.Bool}

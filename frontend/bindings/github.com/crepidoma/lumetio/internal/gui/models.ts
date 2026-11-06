@@ -128,6 +128,11 @@ export interface ManagedTask {
     "project": Project | null;
     "favorite": boolean;
     "time": TimeEntry[] | null;
+
+    /**
+     * Untimed は、いつもの時間を時間不定にしたか。
+     */
+    "untimed": boolean;
     "repeat": Repeat | null;
 }
 
@@ -235,6 +240,11 @@ export interface Plan {
     "title": string;
     "project": Project | null;
     "times": TimeEntry[] | null;
+
+    /**
+     * Untimed は、いつもの時間を時間不定にしたタスクの予定。
+     */
+    "untimed": boolean;
 }
 
 /**
@@ -322,9 +332,14 @@ export interface Record {
     "times": TimeEntry[] | null;
 
     /**
-     * Total は合計を長さの表記で書いたもの。時間不定なら空。
+     * Total は合計を長さの表記で書いたもの。時間不定なら空、時間未入力なら 0 を書く。
      */
     "total": string;
+
+    /**
+     * Untimed は時間不定。
+     */
+    "untimed": boolean;
 }
 
 /**
@@ -334,9 +349,14 @@ export interface RecordPatch {
     "title"?: string | null;
 
     /**
-     * Time は時間の並びをまるごと置き換える。空文字なら時間不定にする。
+     * Time は時間の並びをまるごと置き換える。空文字なら時間を消す。時間を入れると時間不定は外れる。
      */
     "time"?: string | null;
+
+    /**
+     * Untimed は時間不定にするか。時間がある記録は時間不定にできない。
+     */
+    "untimed"?: boolean | null;
 
     /**
      * Project のコードが空なら、プロジェクトを外す。
@@ -416,6 +436,11 @@ export interface TaskEdit {
      * Time は、いつもの時間を入力欄に入れる形で書いたもの。
      */
     "time": string;
+
+    /**
+     * Untimed は、いつもの時間を時間不定にするか。
+     */
+    "untimed": boolean;
     "repeat": Repeat | null;
     "favorite": boolean;
 }

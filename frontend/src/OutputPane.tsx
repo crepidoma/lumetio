@@ -128,7 +128,7 @@ export function useOutputs(
 	const outputs = preview?.outputs ?? [];
 	const current = outputs[Math.min(tab, outputs.length - 1)];
 
-	// 期間の外のプロジェクトがあれば、アプリの外へ出す前に確かめる。
+	// 期間の外のプロジェクトか、計上する記録の時間未入力があれば、アプリの外へ出す前に確かめる。
 	const confirmWarnings = (then: () => void) => {
 		if ((day.warnings ?? []).length > 0) {
 			setPending({ kind: "warn", then });
@@ -183,7 +183,8 @@ export function useOutputs(
 		<>
 			<ConfirmModal
 				opened={pending?.kind === "warn"}
-				title="期間の外のプロジェクトがあります"
+				// 警告は期間の外のプロジェクトと時間未入力の 2 種類あるので、見出しはどちらにも合う問いかけにし、中身は本文に並べる。
+				title="続けますか？"
 				onCancel={() => setPending(null)}
 				actions={
 					<Button

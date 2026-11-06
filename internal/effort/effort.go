@@ -7,9 +7,9 @@ import "github.com/crepidoma/lumetio/internal/dayfile"
 type Task struct {
 	dayfile.Task
 	Minutes int
-	// Untimed は時間不定 (時間の記録がない)。
+	// Untimed は時間不定 (untimed: true の記録)。時間未入力 (時間の入れ忘れ) は含まない。
 	Untimed bool
-	// Counted は工数に計上する時間がある (計上しないタスクでも、時間不定でもない)。
+	// Counted は工数に計上する時間がある (計上しないタスクでなく、時間もある)。
 	Counted bool
 }
 
@@ -39,11 +39,11 @@ func Summarize(day dayfile.Day) Summary {
 	var s Summary
 	index := map[string]int{}
 	for _, t := range day.Tasks {
-		et := Task{Task: t, Untimed: len(t.Time) == 0}
+		et := Task{Task: t, Untimed: t.Untimed}
 		for _, e := range t.Time {
 			et.Minutes += e.Minutes
 		}
-		et.Counted = !t.Exclude && !et.Untimed
+		et.Counted = !t.Exclude && len(t.Time) > 0
 		s.Tasks = append(s.Tasks, et)
 
 		// 工数システムへの取り込みはコードで行うので、コードでまとめる。

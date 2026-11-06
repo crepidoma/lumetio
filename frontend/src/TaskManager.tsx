@@ -66,7 +66,9 @@ export function TaskManager({
 							)}
 						</span>
 						<span className="managed-time">
-							{(t.time ?? []).map((e) => e.label).join("  ")}
+							{t.untimed
+								? "不定"
+								: (t.time ?? []).map((e) => e.label).join("  ")}
 						</span>
 						<span className="managed-repeat">
 							{t.repeat && describe(t.repeat)}

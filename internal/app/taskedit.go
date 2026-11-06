@@ -19,7 +19,9 @@ type TaskInput struct {
 	Tags    []string
 	Exclude bool
 	// Time は、いつもの時間の入力欄の文字列。
-	Time     string
+	Time string
+	// Untimed は、いつもの時間を時間不定にするか。いつもの時間とは一緒に設定できない。
+	Untimed  bool
 	Repeat   *items.Repeat
 	Favorite bool
 }
@@ -90,6 +92,9 @@ func (a *App) SaveTask(original string, base *items.Item, in TaskInput) error {
 	if err != nil {
 		return err
 	}
+	if in.Untimed && len(usual) > 0 {
+		return inputErrorf("いつもの時間と時間不定は一緒に設定できません")
+	}
 	if in.Repeat != nil {
 		if err := checkRepeat(*in.Repeat); err != nil {
 			return err
@@ -101,6 +106,7 @@ func (a *App) SaveTask(original string, base *items.Item, in TaskInput) error {
 		Tags:     cleanTags(in.Tags),
 		Exclude:  in.Exclude,
 		Time:     usual,
+		Untimed:  in.Untimed,
 		Repeat:   in.Repeat,
 		Favorite: in.Favorite,
 	}

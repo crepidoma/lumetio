@@ -32,6 +32,8 @@ tasks:
     done: true
     time: ['12:00-13:00']
   - title: 時間を決めない作業
+    untimed: true
+  - title: 時間を入れ忘れた作業
 skipped: [定例会議]
 notes:
   在宅: true
@@ -60,7 +62,7 @@ func TestParse(t *testing.T) {
 	if got := day.Date.Format(yamlfile.DateLayout); got != "2026-10-29" {
 		t.Errorf("Date = %s", got)
 	}
-	if len(day.Tasks) != 5 {
+	if len(day.Tasks) != 6 {
 		t.Fatalf("len(Tasks) = %d", len(day.Tasks))
 	}
 	second := day.Tasks[1]
@@ -79,8 +81,15 @@ func TestParse(t *testing.T) {
 	if day.Tasks[0].Done {
 		t.Error("Tasks[0].Done = true, want 省略時 false")
 	}
-	if len(day.Tasks[4].Time) != 0 {
-		t.Error("Tasks[4] は時間不定のはず")
+	if t4 := day.Tasks[4]; len(t4.Time) != 0 || !t4.Untimed {
+		t.Errorf("Tasks[4] = %+v, want 時間不定", t4)
+	}
+	// 時間も時間不定もない記録は、時間未入力。
+	if t5 := day.Tasks[5]; len(t5.Time) != 0 || t5.Untimed {
+		t.Errorf("Tasks[5] = %+v, want 時間未入力", t5)
+	}
+	if day.Tasks[0].Untimed {
+		t.Error("Tasks[0].Untimed = true, want 省略時 false")
 	}
 	if day.Tasks[2].Note != "試作して、使えそうなことを確かめた。\n続きは明日。\n" {
 		t.Errorf("Tasks[2].Note = %q", day.Tasks[2].Note)
@@ -180,6 +189,7 @@ func TestParseErrors(t *testing.T) {
 		"日付が読めない":          "date: 2026/10/29\n",
 		"日付がない":            "tasks: []\n",
 		"時間が保存形式でない":       "date: 2026-10-29\ntasks:\n  - title: a\n    time: [9-10]\n",
+		"時間と時間不定の両方":       "date: 2026-10-29\ntasks:\n  - title: a\n    time: [30m]\n    untimed: true\n",
 		"notes が組でない":      "date: 2026-10-29\nnotes: [a]\n",
 		"notes の値が入れ子":     "date: 2026-10-29\nnotes:\n  a: [x]\n",
 		"notes の欄が重なる":     "date: 2026-10-29\nnotes:\n  連絡: a\n  連絡: b\n",
@@ -235,5 +245,17 @@ func TestEmptyNotes(t *testing.T) {
 	// 空の値と同じ名前の欄が重なっていても、重なりとして知らせる。
 	if _, err := Parse([]byte("date: 2026-10-29\nnotes:\n  連絡: ''\n  連絡: a\n")); err == nil {
 		t.Error("重なりを読めた")
+	}
+}
+
+// 時間と時間不定の両方を持つ記録は、書いても読めないファイルになるので、書く前に止める。
+func TestMarshalRejectsTimeAndUntimed(t *testing.T) {
+	day, err := Parse([]byte("date: 2026-10-29\ntasks:\n  - title: a\n    time: [30m]\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	day.Tasks[0].Untimed = true
+	if _, err := Marshal(day); err == nil {
+		t.Error("Marshal succeeded, want error")
 	}
 }

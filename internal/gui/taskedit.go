@@ -32,7 +32,9 @@ type TaskEdit struct {
 	Tags    []string `json:"tags"`
 	Exclude bool     `json:"exclude"`
 	// Time は、いつもの時間を入力欄に入れる形で書いたもの。
-	Time     string  `json:"time"`
+	Time string `json:"time"`
+	// Untimed は、いつもの時間を時間不定にするか。
+	Untimed  bool    `json:"untimed"`
 	Repeat   *Repeat `json:"repeat"`
 	Favorite bool    `json:"favorite"`
 }
@@ -43,7 +45,9 @@ type ManagedTask struct {
 	Project  *Project    `json:"project"`
 	Favorite bool        `json:"favorite"`
 	Time     []TimeEntry `json:"time"`
-	Repeat   *Repeat     `json:"repeat"`
+	// Untimed は、いつもの時間を時間不定にしたか。
+	Untimed bool    `json:"untimed"`
+	Repeat  *Repeat `json:"repeat"`
 }
 
 func repeatOf(r *items.Repeat) *Repeat {
@@ -105,7 +109,7 @@ func (e *TaskEdit) toItem() (items.Item, error) {
 	if err != nil {
 		return items.Item{}, fmt.Errorf("いつもの時間 %q を戻せません: %w", e.Time, err)
 	}
-	it := items.Item{Title: e.Title, Tags: e.Tags, Exclude: e.Exclude, Time: usual, Repeat: r, Favorite: e.Favorite}
+	it := items.Item{Title: e.Title, Tags: e.Tags, Exclude: e.Exclude, Time: usual, Untimed: e.Untimed, Repeat: r, Favorite: e.Favorite}
 	if e.Project != nil {
 		it.Project = *e.Project.toDayfile()
 	}
@@ -149,6 +153,7 @@ func taskEditOf(it items.Item) TaskEdit {
 		Tags:     nonNil(it.Tags),
 		Exclude:  it.Exclude,
 		Time:     usualInput(it.Time),
+		Untimed:  it.Untimed,
 		Repeat:   repeatOf(it.Repeat),
 		Favorite: it.Favorite,
 	}
@@ -179,6 +184,7 @@ func (s *Service) SaveTask(original string, base *TaskEdit, in TaskEdit) error {
 		Tags:     in.Tags,
 		Exclude:  in.Exclude,
 		Time:     in.Time,
+		Untimed:  in.Untimed,
 		Repeat:   r,
 		Favorite: in.Favorite,
 	})
@@ -218,6 +224,7 @@ func (s *Service) ManagedTasks() ([]ManagedTask, error) {
 			Project:  projectOf(it.Project),
 			Favorite: it.Favorite,
 			Time:     timeEntries(it.Time, f),
+			Untimed:  it.Untimed,
 			Repeat:   repeatOf(it.Repeat),
 		})
 	}

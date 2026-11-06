@@ -34,8 +34,10 @@ type Task struct {
 	// Done は、そのタスクがこの日で完了したこと。
 	// タスクが最後に出てくる記録で true なら、直近のタスクに出さない。
 	Done bool
-	// Time が空なら時間不定。
+	// Time が空で Untimed でもなければ、時間未入力 (時間の入れ忘れ)。
 	Time []timeexpr.Entry
+	// Untimed は時間不定。時間を決めず、出勤した時間の残りを割り振る記録。Time とは一緒に持たない。
+	Untimed bool
 }
 
 // Project はプロジェクト。
@@ -98,6 +100,7 @@ type rawTask struct {
 	Exclude bool         `yaml:"exclude"`
 	Done    bool         `yaml:"done"`
 	Time    []string     `yaml:"time"`
+	Untimed bool         `yaml:"untimed"`
 }
 
 // ProjectYAML はプロジェクトの YAML での形。
@@ -182,12 +185,17 @@ func Parse(data []byte) (Day, error) {
 			Note:    rt.Note,
 			Exclude: rt.Exclude,
 			Done:    rt.Done,
+			Untimed: rt.Untimed,
 		}
 		if t.Project, err = rt.Project.Project(); err != nil {
 			return Day{}, fmt.Errorf("タスク %q: %w", rt.Title, err)
 		}
 		if t.Time, err = ParseTimes(rt.Time); err != nil {
 			return Day{}, fmt.Errorf("タスク %q: %w", rt.Title, err)
+		}
+		// 時間があるのか時間不定なのか決まらないので、両方は持たない。
+		if t.Untimed && len(t.Time) > 0 {
+			return Day{}, fmt.Errorf("タスク %q: time と untimed は一緒に書けません", rt.Title)
 		}
 		day.Tasks = append(day.Tasks, t)
 	}
@@ -252,6 +260,10 @@ func Marshal(day Day) ([]byte, error) {
 	if len(day.Tasks) > 0 {
 		tasks := yamlfile.Sequence()
 		for _, t := range day.Tasks {
+			// 時間と時間不定の両方を持つ記録は、読むときにエラーになる。書いてから開けなくならないよう、書く前に止める。
+			if t.Untimed && len(t.Time) > 0 {
+				return nil, fmt.Errorf("タスク %q は時間と時間不定の両方を持っています", t.Title)
+			}
 			tasks.Content = append(tasks.Content, taskNode(t))
 		}
 		yamlfile.Add(root, "tasks", tasks)
@@ -301,6 +313,9 @@ func taskNode(t Task) *yaml.Node {
 	}
 	if len(t.Time) > 0 {
 		yamlfile.Add(n, "time", TimesNode(t.Time))
+	}
+	if t.Untimed {
+		yamlfile.Add(n, "untimed", yamlfile.Bool(true))
 	}
 	return n
 }

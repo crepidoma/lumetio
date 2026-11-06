@@ -26,14 +26,19 @@ type NewRecord struct {
 	Tags    *[]string
 	Note    *string
 	Exclude *bool
+	// Untimed が true なら時間不定で足す。Time に時間を書いたときとは一緒に指定できない。
+	Untimed *bool
 }
 
 // RecordPatch は、記録を直すときの指定。nil の項目は変えない。
 type RecordPatch struct {
 	// Title は、その日の記録の名前だけを変える。打ち間違いを直すためのもので、タスクの設定の名前は変えない。
 	Title *string
-	// Time は時間の書き方の文字列。時間の並びをまるごと置き換える。空文字なら時間不定にする。
+	// Time は時間の書き方の文字列。時間の並びをまるごと置き換える。空文字なら時間を消す。
+	// 時間を入れると、時間を決めたことになるので、時間不定は外れる。
 	Time *string
+	// Untimed は時間不定にするか。時間がある記録は時間不定にできない (Time で同時に消せばできる)。
+	Untimed *bool
 	// Project のコードが空なら、プロジェクトを外す。
 	Project *dayfile.Project
 	Tags    *[]string
@@ -56,7 +61,19 @@ type NoteValue struct {
 // 足し方は画面の＋と同じ。
 // 予定と同じタスクを足すと、予定は記録になる。
 // その日にもう同じタスクの記録があれば、新しい行は作らず、その記録に時間を足す。
+// 時間もいつもの時間もなければ、時間未入力で足す。画面の＋は、足した後に時間を打つため。
 func (a *App) AddRecords(date time.Time, records []NewRecord) (warnings []string, err error) {
+	return a.addRecords(date, records, false)
+}
+
+// AddRecordsExplicit は、AddRecords と同じく記録を足すが、時間か時間不定がはっきり決まらない記録は、何も書かずに入力の誤りにする。MCP から使う。
+// AI が時間を入れ忘れた記録を、黙って時間未入力や時間不定で作らないため。
+// もう記録があるタスクに、足す時間も時間不定の指定もないときも誤りにする。何も変わらないのに、足したと思われないため。
+func (a *App) AddRecordsExplicit(date time.Time, records []NewRecord) (warnings []string, err error) {
+	return a.addRecords(date, records, true)
+}
+
+func (a *App) addRecords(date time.Time, records []NewRecord, explicit bool) (warnings []string, err error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if len(records) == 0 {
@@ -80,12 +97,22 @@ func (a *App) AddRecords(date time.Time, records []NewRecord) (warnings []string
 		if err != nil {
 			return nil, err
 		}
+		untimed := rec.Untimed != nil && *rec.Untimed
+		if untimed && rec.Time != nil && strings.TrimSpace(*rec.Time) != "" {
+			return nil, inputErrorf("%s: 時間と時間不定は一緒に指定できません", title)
+		}
 
 		if i := slices.IndexFunc(day.Tasks, func(t dayfile.Task) bool { return t.Title == title }); i >= 0 {
 			t := &day.Tasks[i]
 			// 時間を足すだけなので、ほかの値を黙って捨てないよう、違う値はエラーにする。
 			if differs(rec, project, *t) {
 				return nil, inputErrorf("%s はもう記録にあります。プロジェクトなどを変えるときは、記録を直します", title)
+			}
+			if untimed {
+				if err := setUntimed(t); err != nil {
+					return nil, err
+				}
+				continue
 			}
 			// 時間を書いていなければ、いつもの時間を足す。
 			entries := a.usualTime(title, s)
@@ -94,7 +121,10 @@ func (a *App) AddRecords(date time.Time, records []NewRecord) (warnings []string
 					return nil, err
 				}
 			}
-			t.Time = append(t.Time, entries...)
+			if explicit && len(entries) == 0 {
+				return nil, inputErrorf("%s はもう記録にあります。足す時間を指定します", title)
+			}
+			addTime(t, entries)
 			continue
 		}
 
@@ -115,10 +145,22 @@ func (a *App) AddRecords(date time.Time, records []NewRecord) (warnings []string
 		if rec.Exclude != nil {
 			t.Exclude = *rec.Exclude
 		}
+		// 時間を書けば、いつもの時間の代わりにその時間で入り、時間不定は外れる。空文字なら時間は入らず、いつもの時間を時間不定にしたタスクだけが時間不定のまま残る。
 		if rec.Time != nil {
-			if t.Time, err = a.parseTime(*rec.Time, date, day, -1, -1); err != nil {
+			entries, err := a.parseTime(*rec.Time, date, day, -1, -1)
+			if err != nil {
 				return nil, err
 			}
+			t.Time = nil
+			addTime(&t, entries)
+		}
+		// 時間不定を指定すれば、いつもの時間があっても時間不定で入る。
+		if untimed {
+			t.Time = nil
+			t.Untimed = true
+		}
+		if explicit && len(t.Time) == 0 && !t.Untimed {
+			return nil, inputErrorf("%s の時間がありません。時間を指定するか、時間不定にするなら untimed に true を指定します", title)
 		}
 		day.Tasks = append(day.Tasks, t)
 	}
@@ -155,8 +197,20 @@ func (a *App) UpdateRecord(date time.Time, title string, patch RecordPatch) (war
 		t.Title = newTitle
 	}
 	if patch.Time != nil {
-		if t.Time, err = a.parseTime(*patch.Time, date, day, i, -1); err != nil {
+		entries, err := a.parseTime(*patch.Time, date, day, i, -1)
+		if err != nil {
 			return nil, err
+		}
+		t.Time = nil
+		addTime(t, entries)
+	}
+	if patch.Untimed != nil {
+		if *patch.Untimed {
+			if err := setUntimed(t); err != nil {
+				return nil, err
+			}
+		} else {
+			t.Untimed = false
 		}
 	}
 	if patch.Project != nil {
@@ -551,4 +605,34 @@ func cleanName(s string) string {
 // ファイルから読んだ値は NFC なので、macOS などから渡された名前でも同じものとして比べるため。
 func nfc(s string) string {
 	return norm.NFC.String(s)
+}
+
+// addTime は、記録に時間を足す。時間を足すと、時間を決めたことになるので、時間不定は外す。
+func addTime(t *dayfile.Task, entries []timeexpr.Entry) {
+	if len(entries) == 0 {
+		return
+	}
+	t.Time = append(t.Time, entries...)
+	t.Untimed = false
+}
+
+// setUntimed は、記録を時間不定にする。時間と時間不定の両方を持たないよう、時間がある記録は入力の誤りにする。
+func setUntimed(t *dayfile.Task) error {
+	if len(t.Time) > 0 {
+		return inputErrorf("%s には時間があるので、時間不定にできません。時間を消すと時間不定にできます", t.Title)
+	}
+	t.Untimed = true
+	return nil
+}
+
+// missingTimeWarnings は、計上する記録 (計上しないでないもの) の時間未入力を知らせる文を返す。
+// 時間の入れ忘れに、工数を取り込む前に気づけるようにするため。時間不定と計上しない記録は、工数の取り込みに関わらないので知らせない。
+func missingTimeWarnings(day dayfile.Day) []string {
+	var warnings []string
+	for _, t := range day.Tasks {
+		if !t.Exclude && !t.Untimed && len(t.Time) == 0 {
+			warnings = append(warnings, fmt.Sprintf("%s の時間が入っていません", t.Title))
+		}
+	}
+	return warnings
 }
