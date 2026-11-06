@@ -2,6 +2,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import { Service } from "../bindings/github.com/crepidoma/lumetio/internal/gui";
 import { SettingsDialog } from "./SettingsDialog";
+import { escapeToConfirm } from "./test/escape";
 import { inputError, renderApp } from "./test/render";
 
 vi.mock("../bindings/github.com/crepidoma/lumetio/internal/gui", () => ({
@@ -132,11 +133,10 @@ test("保存していない変更があるまま閉じるときも確かめる",
 	const onClose = vi.fn();
 	const { screen, field } = await openDuration({ onClose });
 	await field.fill("hh:mm");
-	await userEvent.keyboard("{Escape}");
-	await expect
-		.element(screen.getByText("保存していない変更を破棄しますか？"))
-		.toBeVisible();
-	expect(onClose).not.toHaveBeenCalled();
+	await escapeToConfirm(
+		screen.getByText("保存していない変更を破棄しますか？"),
+		onClose,
+	);
 	await screen.getByRole("button", { name: "破棄する" }).click();
 	expect(onClose).toHaveBeenCalledOnce();
 });

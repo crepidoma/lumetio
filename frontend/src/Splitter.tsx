@@ -42,8 +42,10 @@ export function Splitter({
 				startX.current = e.clientX;
 				onStart();
 			}}
+			// 動かした量は整数に丸める。表示を拡大していると位置が小数になるが、幅は整数で保存するため。
 			onPointerMove={(e) => {
-				if (startX.current !== null) onMove(e.clientX - startX.current);
+				if (startX.current !== null)
+					onMove(Math.round(e.clientX - startX.current));
 			}}
 			onPointerUp={(e) => {
 				if (startX.current === null) return;
