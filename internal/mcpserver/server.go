@@ -38,6 +38,10 @@ func New(a *app.App, version string) *mcp.Server {
 		Description: "その日に使えるプロジェクト (コードと名前) を返す。期間の外 (開始前か期限切れ) のものは返さない。",
 	}, h.listProjects)
 	mcp.AddTool(s, &mcp.Tool{
+		Name:        "list_tags",
+		Description: "タグの一覧を返す。記録にタグを付けるときは、この一覧の名前を使う。",
+	}, h.listTags)
+	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get_days",
 		Description: fmt.Sprintf("期間の各日の記録、予定 (まだ記録にしていない定期的なタスク)、スキップした予定、メモ欄、プロジェクトごとの合計を返す。期間は最大 %d 日。省略すると今日 1 日。", maxDays),
 	}, h.getDays)
@@ -131,6 +135,14 @@ func (h handlers) listProjects(_ context.Context, _ *mcp.CallToolRequest, in dat
 		out.Projects = append(out.Projects, po)
 	}
 	return nil, out, nil
+}
+
+func (h handlers) listTags(_ context.Context, _ *mcp.CallToolRequest, _ noInput) (*mcp.CallToolResult, tagsOutput, error) {
+	tags, err := h.app.Tags()
+	if err != nil {
+		return nil, tagsOutput{}, toolError(err)
+	}
+	return nil, tagsOutput{Tags: append([]string{}, tags...)}, nil
 }
 
 func (h handlers) getDays(_ context.Context, _ *mcp.CallToolRequest, in getDaysInput) (*mcp.CallToolResult, daysOutput, error) {

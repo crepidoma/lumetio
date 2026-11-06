@@ -14,6 +14,9 @@ type dateInput struct {
 	Date string `json:"date,omitempty" jsonschema:"日付 (YYYY-MM-DD)。省略すると今日"`
 }
 
+// noInput は、引数のないツールの入力。
+type noInput struct{}
+
 type getDaysInput struct {
 	From string `json:"from,omitempty" jsonschema:"期間の始まり (YYYY-MM-DD)。省略すると今日"`
 	To   string `json:"to,omitempty" jsonschema:"期間の終わり (YYYY-MM-DD、この日を含む)。省略すると from と同じ日"`
@@ -90,6 +93,10 @@ type projectOutput struct {
 
 type projectsOutput struct {
 	Projects []projectOutput `json:"projects"`
+}
+
+type tagsOutput struct {
+	Tags []string `json:"tags"`
 }
 
 type taskOutput struct {

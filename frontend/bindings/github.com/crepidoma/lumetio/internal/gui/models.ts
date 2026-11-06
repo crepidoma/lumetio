@@ -186,6 +186,11 @@ export interface Opened {
      * Projects は、その日に使えるプロジェクト。
      */
     "projects": Project[] | null;
+
+    /**
+     * Tags は、タグの一覧。タグを入力するときの候補。
+     */
+    "tags": string[] | null;
     "tasks": TaskLists;
 }
 

@@ -1267,6 +1267,10 @@ body {
 	grid-template-columns: 24px minmax(0, 1fr) 140px 140px 28px;
 }
 
+.tags-columns {
+	grid-template-columns: 24px minmax(0, 1fr) 28px;
+}
+
 .dialog-title {
 	font-size: 18px;
 	font-weight: 600;

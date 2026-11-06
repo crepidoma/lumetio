@@ -10,11 +10,15 @@ import { dayValue, makeDay, WithDay } from "./test/day";
 import { renderApp } from "./test/render";
 
 vi.mock("../bindings/github.com/crepidoma/lumetio/internal/gui", () => ({
-	Service: { RemoveRecord: vi.fn(async () => ({})) },
+	Service: {
+		RemoveRecord: vi.fn(async () => ({})),
+		UpdateRecord: vi.fn(async () => ({})),
+	},
 }));
 
 beforeEach(() => {
 	vi.mocked(Service.RemoveRecord).mockClear();
+	vi.mocked(Service.UpdateRecord).mockClear();
 });
 
 const record: Record = {
@@ -32,7 +36,11 @@ const record: Record = {
 function Row() {
 	const [open, setOpen] = useState<string | null>("調査");
 	return (
-		<WithDay value={dayValue(makeDay("2026-11-05"))}>
+		<WithDay
+			value={dayValue(makeDay("2026-11-05"), {
+				tags: ["ふりかえり", "調査", "Review"],
+			})}
+		>
 			<RecordRow record={record} open={open === "調査"} onOpen={setOpen} />
 		</WithDay>
 	);
@@ -80,4 +88,37 @@ test("確かめるダイアログの Esc は、ダイアログだけを閉じる
 	await expect
 		.element(screen.getByRole("button", { name: "記録を消す" }))
 		.toBeVisible();
+});
+
+test("タグの欄は、タグの一覧から打った文字を含むものを候補に出す", async () => {
+	const screen = await renderApp(<Row />);
+	await screen.getByRole("combobox", { name: "タグ" }).fill("rev");
+	// 大文字と小文字は区別しない。
+	await expect
+		.element(screen.getByRole("option", { name: "Review" }))
+		.toBeVisible();
+	await expect
+		.element(screen.getByRole("option", { name: "ふりかえり" }))
+		.not.toBeInTheDocument();
+	await screen.getByRole("option", { name: "Review" }).click();
+	await vi.waitFor(() =>
+		expect(Service.UpdateRecord).toHaveBeenCalledExactlyOnceWith(
+			"2026-11-05",
+			"調査",
+			{ tags: ["Review"] },
+		),
+	);
+});
+
+test("一覧にないタグも、打てば付けられる", async () => {
+	const screen = await renderApp(<Row />);
+	await screen.getByRole("combobox", { name: "タグ" }).fill("新しいタグ");
+	await userEvent.keyboard("{Enter}");
+	await vi.waitFor(() =>
+		expect(Service.UpdateRecord).toHaveBeenCalledExactlyOnceWith(
+			"2026-11-05",
+			"調査",
+			{ tags: ["新しいタグ"] },
+		),
+	);
 });

@@ -25,6 +25,7 @@ function App() {
 	const [day, setDay] = useState<Day | null>(null);
 	const [tasks, setTasks] = useState<TaskLists | null>(null);
 	const [projects, setProjects] = useState<Project[]>([]);
+	const [tags, setTags] = useState<string[]>([]);
 	// focus は、時間を足す欄に移る記録。同じ記録に続けて移れるよう、回数も持つ。
 	const [focus, setFocus] = useState<{ title: string; seq: number } | null>(
 		null,
@@ -65,6 +66,7 @@ function App() {
 		if (current.current !== o.day.date) return;
 		setDay(o.day);
 		setProjects(o.projects ?? []);
+		setTags(o.tags ?? []);
 		setTasks(o.tasks);
 	}, []);
 
@@ -188,9 +190,9 @@ function App() {
 		// 日を移った直後は、前の日の中身を新しい日として出さない。
 		() =>
 			date && day && day.date === date
-				? { date, day, projects, act, run, addTask, focus, reload }
+				? { date, day, projects, tags, act, run, addTask, focus, reload }
 				: null,
-		[date, day, projects, act, run, addTask, focus, reload],
+		[date, day, projects, tags, act, run, addTask, focus, reload],
 	);
 	// 新しい日を読み込むあいだは、前の日の中身 (前の日の日付と操作の組) をそのまま出しておく。
 	// ペインをいったん外すと、引き出した右ペインや出力の選択などの状態が消えてしまうため。
@@ -254,6 +256,7 @@ function App() {
 			<TaskEditor
 				date={date}
 				projects={projects}
+				tagList={tags}
 				target={editing}
 				onClose={closeEditor}
 				onChanged={taskChanged}

@@ -17,7 +17,9 @@ const DefaultDurationFormat = "H:mm"
 type Settings struct {
 	Projects []Project
 	// Notes の並びが、メモ欄を画面に出す順。
-	Notes          []NoteDef
+	Notes []NoteDef
+	// Tags の並びが、タグの候補の順。
+	Tags           []string
 	DurationFormat string
 	// DefaultOutput が空なら、既定の出力はない。
 	DefaultOutput string
@@ -77,6 +79,7 @@ type NoteDef struct {
 type rawSettings struct {
 	Projects       []rawProject `yaml:"projects"`
 	Notes          []rawNoteDef `yaml:"notes"`
+	Tags           []string     `yaml:"tags"`
 	DurationFormat string       `yaml:"duration_format"`
 	DefaultOutput  string       `yaml:"default_output"`
 }
@@ -165,6 +168,19 @@ func Parse(data []byte) (Settings, error) {
 		}
 		s.Notes = append(s.Notes, n)
 	}
+
+	tags := map[string]bool{}
+	for i, t := range raw.Tags {
+		if strings.TrimSpace(t) == "" {
+			return Settings{}, fmt.Errorf("%d 件目のタグが空です", i+1)
+		}
+		// 同じタグが 2 つあると、候補に同じものが並ぶ。
+		if tags[t] {
+			return Settings{}, fmt.Errorf("タグ %q が重なっています", t)
+		}
+		tags[t] = true
+		s.Tags = append(s.Tags, t)
+	}
 	return s, nil
 }
 
@@ -205,6 +221,9 @@ func Marshal(s Settings) ([]byte, error) {
 			notes.Content = append(notes.Content, n)
 		}
 		yamlfile.Add(root, "notes", notes)
+	}
+	if len(s.Tags) > 0 {
+		yamlfile.Add(root, "tags", yamlfile.FlowList(s.Tags))
 	}
 	if s.DurationFormat != "" && s.DurationFormat != DefaultDurationFormat {
 		yamlfile.Add(root, "duration_format", yamlfile.Text(s.DurationFormat))

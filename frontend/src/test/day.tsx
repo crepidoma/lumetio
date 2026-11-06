@@ -30,6 +30,7 @@ export function dayValue(day: Day, patch: Partial<DayContextValue> = {}) {
 		date: day.date,
 		day,
 		projects: [],
+		tags: [],
 		act: async (op) => {
 			await op();
 			return null;

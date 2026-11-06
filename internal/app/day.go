@@ -38,7 +38,9 @@ type Opened struct {
 	Day DayView
 	// Projects は、その日に使えるプロジェクト。
 	Projects []settings.Project
-	Tasks    TaskLists
+	// Tags は、タグの一覧。タグを入力するときの候補。
+	Tags  []string
+	Tasks TaskLists
 }
 
 // Open は、その日を開いたときに画面に出すものを、まとめて返す。
@@ -53,7 +55,7 @@ func (a *App) Open(date time.Time) (Opened, error) {
 	if err != nil {
 		return Opened{}, err
 	}
-	return Opened{Day: view, Projects: projectsOn(date, s.settings.Projects), Tasks: a.taskLists(date, s)}, nil
+	return Opened{Day: view, Projects: projectsOn(date, s.settings.Projects), Tags: s.settings.Tags, Tasks: a.taskLists(date, s)}, nil
 }
 
 // Day は、その日を開いたときに見せるものを返す。
