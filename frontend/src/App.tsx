@@ -17,10 +17,10 @@ import { SearchBox } from "./SearchBox";
 import { SettingsDialog } from "./SettingsDialog";
 import { TaskEditor } from "./TaskEditor";
 import { TaskManager } from "./TaskManager";
+import { useToday } from "./useToday";
 import { Workspace } from "./Workspace";
 
 function App() {
-	const [today, setToday] = useState<string | null>(null);
 	const [date, setDate] = useState<string | null>(null);
 	const [day, setDay] = useState<Day | null>(null);
 	const [tasks, setTasks] = useState<TaskLists | null>(null);
@@ -43,17 +43,9 @@ function App() {
 	useEffect(() => notify(day?.notices ?? []), [day, notify]);
 	useEffect(() => notify(tasks?.notices ?? []), [tasks, notify]);
 
-	useEffect(() => {
-		call(
-			() => Service.Today(),
-			() => {},
-		).then((r) => {
-			if (r.ok) {
-				setToday(r.value);
-				setDate(r.value);
-			}
-		});
-	}, []);
+	const today = useToday();
+	// 最初に開くのは今日。その後に日付が変わっても、開いている日は移さない。
+	if (date === null && today !== null) setDate(today);
 
 	// current は今開いている日。日を移った後に前の日の結果が遅れて届いても、画面に出さないために使う。
 	const current = useRef(date);
