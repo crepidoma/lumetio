@@ -110,3 +110,28 @@ func TestSummarizeEmptyDay(t *testing.T) {
 		t.Errorf("Summary = %+v", s)
 	}
 }
+
+func TestCombine(t *testing.T) {
+	first := Summarize(dayfile.Day{Tasks: []dayfile.Task{
+		{Title: "改修", Project: dayfile.Project{Code: "D-1", Name: "開発"}, Time: times(t, "60m")},
+		{Title: "勉強会", Project: dayfile.Project{Code: "S-1"}, Exclude: true, Time: times(t, "30m")},
+	}})
+	second := Summarize(dayfile.Day{Tasks: []dayfile.Task{
+		{Title: "調べもの", Project: dayfile.Project{Code: "R-1"}},
+		{Title: "改修", Project: dayfile.Project{Code: "D-1", Name: "開発 (改)"}, Time: times(t, "90m")},
+	}})
+	got := Combine([]Summary{first, second})
+	if got.TotalMinutes != 150 || len(got.Projects) != 3 || got.Tasks != nil {
+		t.Fatalf("Combine = %+v", got)
+	}
+	// コードでまとめ、名前は期間の中で最初に出てきたもの。
+	if p := got.Projects[0]; p.Code != "D-1" || p.Name != "開発" || p.Minutes != 150 || !p.Counted || p.HasUntimed {
+		t.Errorf("D-1 = %+v", p)
+	}
+	if p := got.Projects[1]; p.Code != "S-1" || p.Minutes != 0 || p.Counted || p.HasUntimed {
+		t.Errorf("S-1 = %+v", p)
+	}
+	if p := got.Projects[2]; p.Code != "R-1" || p.Counted || !p.HasUntimed {
+		t.Errorf("R-1 = %+v", p)
+	}
+}

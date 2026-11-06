@@ -68,3 +68,27 @@ func Summarize(day dayfile.Day) Summary {
 	}
 	return s
 }
+
+// Combine は、何日分かの工数を、期間の工数にまとめる。
+// プロジェクトは 1 日と同じくコードでまとめ、期間の中で最初に出てきた順に並べる。名前も最初に出てきたもの。
+// タスクごとの記録は日ごとに見るものなので、まとめない (Tasks は空)。
+func Combine(days []Summary) Summary {
+	var s Summary
+	index := map[string]int{}
+	for _, d := range days {
+		for _, p := range d.Projects {
+			i, ok := index[p.Code]
+			if !ok {
+				i = len(s.Projects)
+				index[p.Code] = i
+				s.Projects = append(s.Projects, Project{Name: p.Name, Code: p.Code})
+			}
+			c := &s.Projects[i]
+			c.Minutes += p.Minutes
+			c.Counted = c.Counted || p.Counted
+			c.HasUntimed = c.HasUntimed || p.HasUntimed
+		}
+		s.TotalMinutes += d.TotalMinutes
+	}
+	return s
+}

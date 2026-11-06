@@ -36,7 +36,7 @@ func (p *projectInput) toApp() *dayfile.Project {
 
 type recordInput struct {
 	Title   string        `json:"title" jsonschema:"タスク名"`
-	Time    *string       `json:"time,omitempty" jsonschema:"時間。9:30-11:30、-12:00 (直前の記録の終わりから)、13:00- (今まで。今日だけ)、30m、1.5h、90 (分) などを、空白かカンマで区切って複数書ける。省略すると、いつもの時間"`
+	Time    *string       `json:"time,omitempty" jsonschema:"時間。9:30-11:30、-12:00 (直前の記録の終わりから)、13:00- (今まで。今日だけ)、30m、1.5h、90 (分) などを、空白かカンマで区切って複数書ける。省略すると、いつもの時間 (いつもの時間がなければ時間を入れない)。空文字なら時間を入れない。時間を入れずに足した新しい記録は時間不定になる"`
 	Project *projectInput `json:"project,omitempty" jsonschema:"プロジェクト。省略すると、タスクの設定か一番新しい記録から写す"`
 	Tags    *[]string     `json:"tags,omitempty" jsonschema:"タグ"`
 	Note    *string       `json:"note,omitempty" jsonschema:"そのタスクのメモ"`
@@ -49,14 +49,20 @@ type addRecordsInput struct {
 }
 
 type updateRecordInput struct {
-	Date    string        `json:"date,omitempty" jsonschema:"日付 (YYYY-MM-DD)。省略すると今日"`
-	Title   string        `json:"title" jsonschema:"直す記録のタスク名"`
-	Time    *string       `json:"time,omitempty" jsonschema:"時間。今の時間の並びをまるごと置き換える。書き方は add_records と同じ。空文字にすると時間不定"`
-	Project *projectInput `json:"project,omitempty" jsonschema:"プロジェクト。code を空にすると外す"`
-	Tags    *[]string     `json:"tags,omitempty" jsonschema:"タグ。並びをまるごと置き換える"`
-	Note    *string       `json:"note,omitempty" jsonschema:"そのタスクのメモ"`
-	Exclude *bool         `json:"exclude,omitempty" jsonschema:"工数に計上しない"`
-	Done    *bool         `json:"done,omitempty" jsonschema:"完了。そのタスクを最後に記録した日の記録にだけ付けられる"`
+	Date     string        `json:"date,omitempty" jsonschema:"日付 (YYYY-MM-DD)。省略すると今日"`
+	Title    string        `json:"title" jsonschema:"直す記録のタスク名"`
+	NewTitle *string       `json:"new_title,omitempty" jsonschema:"新しいタスク名。打ち間違いを直すためのもので、その日の記録の名前だけを変え、タスクの設定は変えない"`
+	Time     *string       `json:"time,omitempty" jsonschema:"時間。今の時間の並びをまるごと置き換える。書き方は add_records と同じ。空文字にすると時間不定"`
+	Project  *projectInput `json:"project,omitempty" jsonschema:"プロジェクト。code を空にすると外す"`
+	Tags     *[]string     `json:"tags,omitempty" jsonschema:"タグ。並びをまるごと置き換える"`
+	Note     *string       `json:"note,omitempty" jsonschema:"そのタスクのメモ"`
+	Exclude  *bool         `json:"exclude,omitempty" jsonschema:"工数に計上しない"`
+	Done     *bool         `json:"done,omitempty" jsonschema:"完了。そのタスクを最後に記録した日の記録にだけ付けられる"`
+}
+
+type reorderRecordsInput struct {
+	Date   string   `json:"date,omitempty" jsonschema:"日付 (YYYY-MM-DD)。省略すると今日"`
+	Titles []string `json:"titles" jsonschema:"その日の記録のタスク名をすべて、並べたい順に並べたもの"`
 }
 
 type titleInput struct {
@@ -81,7 +87,7 @@ type outputInput struct {
 
 type exportInput struct {
 	Date       string `json:"date,omitempty" jsonschema:"日付 (YYYY-MM-DD)。省略すると今日"`
-	Name       string `json:"name,omitempty" jsonschema:"出力セットの名前。省略すると既定の出力"`
+	Name       string `json:"name,omitempty" jsonschema:"出力か出力セットの名前。省略すると既定の出力"`
 	OnConflict string `json:"on_conflict,omitempty" jsonschema:"出力先に同じ名前のファイルがあるときの扱い。overwrite (上書き) か rename (名前の後ろに時刻を付けて別に保存)。省略するか ask なら、何も書かずにエラーを返す"`
 }
 
@@ -93,6 +99,13 @@ type projectOutput struct {
 
 type projectsOutput struct {
 	Projects []projectOutput `json:"projects"`
+}
+
+type outputsOutput struct {
+	Sets    []string `json:"sets" jsonschema:"出力セットの名前"`
+	Outputs []string `json:"outputs" jsonschema:"出力の名前"`
+	Default string   `json:"default,omitempty" jsonschema:"既定の出力か出力セットの名前。name を省略するとこれを使う"`
+	Notices []string `json:"notices" jsonschema:"読めずに除いたテンプレートなどの知らせ"`
 }
 
 type tagsOutput struct {
@@ -123,8 +136,9 @@ type recordOutput struct {
 	Note    string         `json:"note,omitempty"`
 	Exclude bool           `json:"exclude,omitempty"`
 	Done    bool           `json:"done,omitempty"`
-	Time    []string       `json:"time" jsonschema:"時間の並び (HH:MM-HH:MM か Nm)。空なら時間不定"`
-	Minutes int            `json:"minutes"`
+	Time    []string       `json:"time" jsonschema:"時間の並び (HH:MM-HH:MM か Nm)。時間不定なら空"`
+	Minutes *int           `json:"minutes,omitempty" jsonschema:"時間の合計 (分)。時間不定なら返さない"`
+	Untimed bool           `json:"untimed,omitempty" jsonschema:"時間不定 (時間を決めずに記録したもの。入れ忘れとは限らない)"`
 }
 
 type planOutput struct {
@@ -141,7 +155,7 @@ type noteOutput struct {
 type projectTotalOutput struct {
 	Code       string `json:"code"`
 	Name       string `json:"name"`
-	Minutes    int    `json:"minutes" jsonschema:"計上する時間の合計 (分)"`
+	Minutes    *int   `json:"minutes,omitempty" jsonschema:"計上する時間の合計 (分)。計上する時間がなく、時間不定の記録があるときは返さない"`
 	HasUntimed bool   `json:"has_untimed,omitempty" jsonschema:"計上する記録に時間不定のものがある"`
 }
 
@@ -158,8 +172,14 @@ type dayOutput struct {
 	Notices      []string             `json:"notices" jsonschema:"読めずに除いたファイルなどの知らせ"`
 }
 
+type periodOutput struct {
+	Projects     []projectTotalOutput `json:"projects" jsonschema:"期間のプロジェクトごとの合計。期間の中で最初に出てくる順"`
+	TotalMinutes int                  `json:"total_minutes" jsonschema:"期間の計上する時間の合計 (分)"`
+}
+
 type daysOutput struct {
-	Days []dayOutput `json:"days"`
+	Days   []dayOutput   `json:"days"`
+	Period *periodOutput `json:"period,omitempty" jsonschema:"期間の合計。2 日以上を読んだときだけ返す"`
 }
 
 type writeOutput struct {
@@ -266,7 +286,7 @@ func newDayOutput(v app.DayView) dayOutput {
 		Notices:      nonNil(v.Skipped),
 	}
 	for _, t := range v.Summary.Tasks {
-		out.Records = append(out.Records, recordOutput{
+		r := recordOutput{
 			Title:   t.Title,
 			Project: projectOf(t.Project),
 			Tags:    t.Tags,
@@ -274,8 +294,13 @@ func newDayOutput(v app.DayView) dayOutput {
 			Exclude: t.Exclude,
 			Done:    t.Done,
 			Time:    timeStrings(t.Time),
-			Minutes: t.Minutes,
-		})
+			Untimed: t.Untimed,
+		}
+		// 時間不定の記録に 0 分と返すと、入れ忘れと読まれるので、時間の合計を返さない。
+		if !t.Untimed {
+			r.Minutes = &t.Minutes
+		}
+		out.Records = append(out.Records, r)
 	}
 	for _, p := range v.Plans {
 		out.Plans = append(out.Plans, planOutput{Title: p.Title, UsualTime: timeStrings(p.Time)})
@@ -303,7 +328,20 @@ func noteOutputOf(n dayfile.Note, defs []settings.NoteDef) noteOutput {
 }
 
 func projectTotalOf(p effort.Project) projectTotalOutput {
-	return projectTotalOutput{Code: p.Code, Name: p.Name, Minutes: p.Minutes, HasUntimed: p.HasUntimed}
+	out := projectTotalOutput{Code: p.Code, Name: p.Name, HasUntimed: p.HasUntimed}
+	// 時間不定の記録しか計上するものがないときに 0 分と返すと、入れ忘れと読まれるので、時間の合計を返さない。
+	if p.Counted || !p.HasUntimed {
+		out.Minutes = &p.Minutes
+	}
+	return out
+}
+
+func newPeriodOutput(s effort.Summary) *periodOutput {
+	out := &periodOutput{Projects: []projectTotalOutput{}, TotalMinutes: s.TotalMinutes}
+	for _, p := range s.Projects {
+		out.Projects = append(out.Projects, projectTotalOf(p))
+	}
+	return out
 }
 
 func newRenderOutputResult(r app.RenderResult) renderOutputResult {

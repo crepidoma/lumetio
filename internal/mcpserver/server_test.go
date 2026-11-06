@@ -101,7 +101,7 @@ func TestListTools(t *testing.T) {
 		names = append(names, tool.Name)
 	}
 	slices.Sort(names)
-	want := []string{"add_records", "export_output_set", "get_days", "list_projects", "list_tags", "list_tasks", "remove_record", "render_output", "set_notes", "skip_plans", "update_record"}
+	want := []string{"add_records", "export_output_set", "get_days", "list_outputs", "list_projects", "list_tags", "list_tasks", "remove_record", "render_output", "reorder_records", "set_notes", "skip_plans", "update_record"}
 	if !slices.Equal(names, want) {
 		t.Errorf("tools = %v", names)
 	}
@@ -239,5 +239,162 @@ func TestListTags(t *testing.T) {
 	}
 	if !slices.Equal(out.Tags, []string{"ふりかえり", "調査"}) {
 		t.Errorf("tags = %q", out.Tags)
+	}
+}
+
+func TestGetDaysMarksUntimed(t *testing.T) {
+	root := newRoot(t)
+	write(t, root, "days/2026/2026-11-05.yaml", "date: 2026-11-05\ntasks:\n  - title: 調査\n  - title: 朝会\n    time: ['09:00-09:15']\n")
+	cs, _ := connectTo(t, root)
+	var raw map[string]any
+	if msg := call(t, cs, "get_days", map[string]any{}, &raw); msg != "" {
+		t.Fatal(msg)
+	}
+	records := raw["days"].([]any)[0].(map[string]any)["records"].([]any)
+	// 時間不定の記録は、0 分と読まれないよう、時間の合計を返さずに untimed を付ける。
+	untimed := records[0].(map[string]any)
+	if _, ok := untimed["minutes"]; ok || untimed["untimed"] != true {
+		t.Errorf("時間不定の記録 = %v", untimed)
+	}
+	timed := records[1].(map[string]any)
+	if _, ok := timed["untimed"]; ok || timed["minutes"] != 15.0 {
+		t.Errorf("時間のある記録 = %v", timed)
+	}
+}
+
+// 計上する時間がなく、時間不定の記録があるプロジェクトの合計は、0 分と読まれないよう時間を返さない。
+func TestGetDaysProjectTotalUntimed(t *testing.T) {
+	root := newRoot(t)
+	write(t, root, "days/2026/2026-11-05.yaml", "date: 2026-11-05\ntasks:\n  - title: 調査\n    project:\n      code: DEV-001\n  - title: 雑談\n    project:\n      code: ETC-01\n    exclude: true\n    time: [30m]\n")
+	cs, _ := connectTo(t, root)
+	var raw map[string]any
+	if msg := call(t, cs, "get_days", map[string]any{}, &raw); msg != "" {
+		t.Fatal(msg)
+	}
+	projects := raw["days"].([]any)[0].(map[string]any)["projects"].([]any)
+	untimed := projects[0].(map[string]any)
+	if _, ok := untimed["minutes"]; ok || untimed["has_untimed"] != true {
+		t.Errorf("時間不定だけのプロジェクト = %v", untimed)
+	}
+	// 計上しない記録だけのプロジェクトは、計上する時間が 0 分なので、そのまま返す。
+	excluded := projects[1].(map[string]any)
+	if excluded["minutes"] != 0.0 {
+		t.Errorf("計上しないだけのプロジェクト = %v", excluded)
+	}
+}
+
+func TestGetDaysPeriodTotals(t *testing.T) {
+	root := newRoot(t)
+	write(t, root, "days/2026/2026-11-03.yaml", "date: 2026-11-03\ntasks:\n  - title: 調査\n    project:\n      code: DEV-001\n      name: 新機能\n    time: [60m]\n  - title: 雑務\n    time: [15m]\n")
+	write(t, root, "days/2026/2026-11-04.yaml", "date: 2026-11-04\ntasks:\n  - title: 会議\n    project:\n      code: MTG-01\n  - title: 調査\n    project:\n      code: DEV-001\n      name: 新機能\n    time: [90m]\n")
+	cs, _ := connectTo(t, root)
+
+	var out daysOutput
+	if msg := call(t, cs, "get_days", map[string]any{"from": "2026-11-03", "to": "2026-11-04"}, &out); msg != "" {
+		t.Fatal(msg)
+	}
+	p := out.Period
+	if p == nil || p.TotalMinutes != 165 || len(p.Projects) != 3 {
+		t.Fatalf("period = %+v", p)
+	}
+	if got := p.Projects[0]; got.Code != "DEV-001" || got.Name != "新機能" || got.Minutes == nil || *got.Minutes != 150 || got.HasUntimed {
+		t.Errorf("DEV-001 = %+v", got)
+	}
+	if got := p.Projects[1]; got.Code != "" || got.Minutes == nil || *got.Minutes != 15 {
+		t.Errorf("プロジェクトなし = %+v", got)
+	}
+	if got := p.Projects[2]; got.Code != "MTG-01" || got.Minutes != nil || !got.HasUntimed {
+		t.Errorf("MTG-01 = %+v", got)
+	}
+
+	// 1 日だけなら、日の合計と同じなので返さない。
+	var one daysOutput
+	if msg := call(t, cs, "get_days", map[string]any{"from": "2026-11-03"}, &one); msg != "" || one.Period != nil {
+		t.Errorf("1 日: %q, %+v", msg, one.Period)
+	}
+}
+
+func TestListOutputs(t *testing.T) {
+	cs, _ := connect(t)
+	var out outputsOutput
+	if msg := call(t, cs, "list_outputs", map[string]any{}, &out); msg != "" {
+		t.Fatal(msg)
+	}
+	if !slices.Equal(out.Sets, []string{"日報"}) || !slices.Equal(out.Outputs, []string{"日報テキスト"}) || out.Default != "日報" {
+		t.Errorf("outputs = %+v", out)
+	}
+}
+
+// タスク名を直すのは打ち間違いを直すためで、その日の記録だけを変える。
+func TestUpdateRecordTitle(t *testing.T) {
+	root := newRoot(t)
+	write(t, root, "days/2026/2026-11-05.yaml", "date: 2026-11-05\ntasks:\n  - title: 調差\n    note: 続きは明日\n    time: [60m]\n  - title: 朝会\n    time: ['09:00-09:15']\n")
+	cs, _ := connectTo(t, root)
+	if msg := call(t, cs, "update_record", map[string]any{"title": "調差", "new_title": "調査"}, nil); msg != "" {
+		t.Fatal(msg)
+	}
+	var out daysOutput
+	if msg := call(t, cs, "get_days", map[string]any{}, &out); msg != "" {
+		t.Fatal(msg)
+	}
+	if r := out.Days[0].Records[0]; r.Title != "調査" || r.Note != "続きは明日" {
+		t.Errorf("直した記録 = %+v", r)
+	}
+	if msg := call(t, cs, "update_record", map[string]any{"title": "調査", "new_title": "朝会"}, nil); !strings.Contains(msg, "朝会 はもう記録にあります") {
+		t.Errorf("重なる名前: %q", msg)
+	}
+	data, err := os.ReadFile(filepath.Join(root, "items.yaml"))
+	if err != nil || string(data) != itemsYAML {
+		t.Errorf("items.yaml = %q, %v", data, err)
+	}
+}
+
+func TestReorderRecords(t *testing.T) {
+	root := newRoot(t)
+	write(t, root, "days/2026/2026-11-05.yaml", "date: 2026-11-05\ntasks:\n  - title: 調査\n  - title: 朝会\n  - title: 雑務\n")
+	cs, _ := connectTo(t, root)
+	if msg := call(t, cs, "reorder_records", map[string]any{"titles": []any{"朝会", "調査", "雑務"}}, nil); msg != "" {
+		t.Fatal(msg)
+	}
+	var out daysOutput
+	if msg := call(t, cs, "get_days", map[string]any{}, &out); msg != "" {
+		t.Fatal(msg)
+	}
+	var titles []string
+	for _, r := range out.Days[0].Records {
+		titles = append(titles, r.Title)
+	}
+	if !slices.Equal(titles, []string{"朝会", "調査", "雑務"}) {
+		t.Errorf("titles = %q", titles)
+	}
+
+	// 足りない名前、記録にない名前、重なる名前があれば、何も書かずに今の記録の名前を返す。
+	for _, args := range [][]any{{"雑務", "朝会"}, {"朝会", "調査", "雑務", "会議"}, {"朝会", "朝会", "調査"}} {
+		msg := call(t, cs, "reorder_records", map[string]any{"titles": args}, nil)
+		if !strings.Contains(msg, "朝会、調査、雑務") {
+			t.Errorf("%q: %q", args, msg)
+		}
+	}
+
+	// 名前は、ほかのツールと同じく前後の空白を除いて比べる。
+	if msg := call(t, cs, "reorder_records", map[string]any{"titles": []any{" 雑務", "朝会", "調査"}}, nil); msg != "" {
+		t.Errorf("空白: %q", msg)
+	}
+}
+
+// macOS などから濁点を分けた形 (NFD) で名前を渡されても、NFC にそろえて比べ、並べ替える。
+func TestReorderRecordsNFC(t *testing.T) {
+	root := newRoot(t)
+	write(t, root, "days/2026/2026-11-05.yaml", "date: 2026-11-05\ntasks:\n  - title: ガイド\n  - title: 朝会\n")
+	cs, _ := connectTo(t, root)
+	if msg := call(t, cs, "reorder_records", map[string]any{"titles": []any{"朝会", "カ\u3099イド"}}, nil); msg != "" {
+		t.Fatal(msg)
+	}
+	var out daysOutput
+	if msg := call(t, cs, "get_days", map[string]any{}, &out); msg != "" {
+		t.Fatal(msg)
+	}
+	if r := out.Days[0].Records; r[0].Title != "朝会" || r[1].Title != "ガイド" {
+		t.Errorf("records = %+v", r)
 	}
 }
