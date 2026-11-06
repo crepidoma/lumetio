@@ -38,6 +38,17 @@ test("ドラッグすると、押した位置から動かした量を渡す", as
 	expect(props.onEnd).toHaveBeenCalledOnce();
 });
 
+test("表示を拡大していて位置が小数になっても、動かした量は整数で渡す", async () => {
+	const { screen, props } = await renderSplitter();
+	const splitter = screen
+		.getByRole("separator", { name: "左ペインの幅" })
+		.element();
+	const from = center(splitter);
+	await drag(splitter, { x: from.x + 40.5, y: from.y });
+	const dx = props.onMove.mock.lastCall?.[0];
+	expect(Number.isInteger(dx)).toBe(true);
+});
+
 test("左右キーで、動かす向きを渡す", async () => {
 	const { screen, props } = await renderSplitter();
 	const splitter = screen
