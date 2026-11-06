@@ -1,10 +1,10 @@
 import { TextInput } from "@mantine/core";
-import { useEffect } from "react";
 import { Service } from "../bindings/github.com/crepidoma/lumetio/internal/gui";
 import { AddRowButton, EditTable } from "./EditTable";
 import {
 	SaveButton,
 	type SectionProps,
+	useReportDirty,
 	useRows,
 	useSave,
 } from "./SettingsSection";
@@ -13,7 +13,7 @@ import {
 export function TagsSection({ onDirty, onSaved, reload }: SectionProps) {
 	const t = useRows(Service.TagRows, reload);
 	const { saving, error, save } = useSave(reload, t.rows);
-	useEffect(() => onDirty(t.dirty), [t.dirty, onDirty]);
+	useReportDirty(t.dirty, onDirty);
 
 	if (t.base === null) return null;
 	const base = t.base;

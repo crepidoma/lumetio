@@ -6,7 +6,7 @@ import {
 	Tabs,
 	TextInput,
 } from "@mantine/core";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	type Locations,
 	type LocationsAtDefault,
@@ -19,7 +19,12 @@ import { Folder, Undo } from "./icons";
 import { NoteDefsSection } from "./NoteDefsSection";
 import { OutputsSection } from "./OutputsSection";
 import { ProjectsSection } from "./ProjectsSection";
-import { SaveButton, type SectionProps, useSave } from "./SettingsSection";
+import {
+	SaveButton,
+	type SectionProps,
+	useReportDirty,
+	useSave,
+} from "./SettingsSection";
 import { TagsSection } from "./TagsSection";
 import { usePreview } from "./usePreview";
 
@@ -56,13 +61,17 @@ export function SettingsDialog({
 	const [tab, setTab] = useState<Section>("locations");
 	// dirty は、開いている項目に保存していない変更があるか。
 	// ほかの項目へ移るときと閉じるときに確かめ、移ったら変更は破棄するので、開いている項目のぶんだけ持つ。
-	const [dirty, setDirty] = useState(false);
+	// 画面には出さず、確かめるときに今の値を読むだけなので ref で持つ。Esc で呼ばれる閉じる処理が前に描いたときのものでも、今の値を見るようにするため。
+	const dirty = useRef(false);
+	const setDirty = useCallback((d: boolean) => {
+		dirty.current = d;
+	}, []);
 	// leaving は、破棄してよいかを確かめているあいだの行き先。close なら閉じる。
 	const [leaving, setLeaving] = useState<Section | "close" | null>(null);
 
 	useEffect(() => {
 		if (!opened) {
-			setDirty(false);
+			dirty.current = false;
 			setTab("locations");
 		}
 	}, [opened]);
@@ -70,7 +79,7 @@ export function SettingsDialog({
 	// 見えていない項目は外すので、移ると前の項目の変更は消え、戻ったときは保存した値から始まる。
 	const leave = (to: Section | "close") => {
 		setLeaving(null);
-		setDirty(false);
+		dirty.current = false;
 		if (to === "close") {
 			onClose();
 		} else {
@@ -78,7 +87,7 @@ export function SettingsDialog({
 		}
 	};
 	const requestLeave = (to: Section | "close") =>
-		dirty ? setLeaving(to) : leave(to);
+		dirty.current ? setLeaving(to) : leave(to);
 
 	return (
 		// 確かめるダイアログと重ねるので、Esc を一番上のダイアログだけが受けるよう、同じ Modal.Stack に入れる。
@@ -180,7 +189,7 @@ function LocationsSection({ onDirty, onSaved, reload }: SectionProps) {
 		!!base &&
 		!!value &&
 		(base.dataDir !== value.dataDir || base.outputDir !== value.outputDir);
-	useEffect(() => onDirty(dirty), [dirty, onDirty]);
+	useReportDirty(dirty, onDirty);
 
 	// 書き方が違っても同じフォルダのことがあるので、初期値かどうかは Go でフォルダとして比べる。
 	const [atDefault, setAtDefault] = useState<LocationsAtDefault | null>(null);
@@ -329,7 +338,7 @@ function DurationSection({ onDirty, onSaved, reload }: SectionProps) {
 	}, []);
 
 	const dirty = base !== null && value !== base;
-	useEffect(() => onDirty(dirty), [dirty, onDirty]);
+	useReportDirty(dirty, onDirty);
 
 	const [{ value: samples, error }] = usePreview(value, () =>
 		Service.PreviewDurationFormat(value),
