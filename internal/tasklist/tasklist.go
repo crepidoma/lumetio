@@ -75,6 +75,7 @@ func FromItem(it items.Item) dayfile.Task {
 		Tags:    slices.Clone(it.Tags),
 		Exclude: it.Exclude,
 		Time:    slices.Clone(it.Time),
+		Untimed: it.Untimed,
 	}
 }
 

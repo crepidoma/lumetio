@@ -41,6 +41,9 @@ export function RecordRow({ record, open, onOpen, handle }: Props) {
 	const { date, act, focus } = useDay();
 
 	const toggle = () => onOpen(open ? null : record.title);
+	// 札がなければ 2 段目は出さない。
+	const hasBadges =
+		(record.tags ?? []).length > 0 || record.exclude || record.done;
 	const onKeyDown = (e: KeyboardEvent) => {
 		// 行から開いたダイアログ (portal で行の外に描く) のキーも React の木を通って届くので、受けない。
 		// ダイアログの Esc で、ダイアログと一緒に詳しい表示まで閉じないようにするため。
@@ -64,27 +67,37 @@ export function RecordRow({ record, open, onOpen, handle }: Props) {
 			onKeyDown={onKeyDown}
 		>
 			{handle}
-			<div className="row-line">
-				<TitleField
-					title={record.title}
-					onCommit={async (title) => {
-						const message = await act(() =>
-							Service.UpdateRecord(date, record.title, { title }),
-						);
-						// 名前を変えても、開いている詳しい表示を閉じない。Go は前後の空白を除いて NFC にそろえて書くので、同じ形で指す。
-						if (!message && open) onOpen(title.trim().normalize("NFC"));
-						return message;
-					}}
-				/>
-				{(record.tags ?? []).map((t) => (
-					<span key={t} className="badge">
-						#{t}
-					</span>
-				))}
-				{record.exclude && <span className="badge">計上しない</span>}
-				{record.done && <span className="badge">完了</span>}
-				<span className={record.total ? "row-total" : "row-total untimed"}>
-					{record.total || "不定"}
+			{/* 1 段目にタスク名、2 段目に札を置き、合計はその 2 段の真ん中の右端に置く。 */}
+			<div className="row-top">
+				<div className="row-main">
+					<TitleField
+						title={record.title}
+						onCommit={async (title) => {
+							const message = await act(() =>
+								Service.UpdateRecord(date, record.title, { title }),
+							);
+							// 名前を変えても、開いている詳しい表示を閉じない。Go は前後の空白を除いて NFC にそろえて書くので、同じ形で指す。
+							if (!message && open) onOpen(title.trim().normalize("NFC"));
+							return message;
+						}}
+					/>
+					{hasBadges && (
+						<div className="row-badges">
+							{(record.tags ?? []).map((t) => (
+								<span key={t} className="badge">
+									#{t}
+								</span>
+							))}
+							{/* 計上しないと完了は記録の状態なので、タグと見分けられるよう、枠線の札にする。 */}
+							{record.exclude && (
+								<span className="badge state">計上しない</span>
+							)}
+							{record.done && <span className="badge state">完了</span>}
+						</div>
+					)}
+				</div>
+				<span className={record.untimed ? "row-total untimed" : "row-total"}>
+					{record.untimed ? "不定" : record.total}
 				</span>
 			</div>
 			{record.project && (
@@ -175,6 +188,14 @@ function RecordDetail({ record }: { record: Record }) {
 			<NoteField value={record.note} onCommit={(note) => update({ note })} />
 			<Group justify="space-between">
 				<Group gap="lg">
+					{/* 時間がある記録は時間不定にできない。時間と時間不定の両方を持たないため。 */}
+					<Checkbox
+						size="xs"
+						label="時間不定"
+						checked={record.untimed}
+						disabled={(record.times ?? []).length > 0}
+						onChange={(e) => update({ untimed: e.currentTarget.checked })}
+					/>
 					<Checkbox
 						size="xs"
 						label="計上しない"

@@ -25,11 +25,13 @@ func TestSummarize(t *testing.T) {
 	day := dayfile.Day{Tasks: []dayfile.Task{
 		{Title: "改修", Project: dev, Time: times(t, "09:30-11:30")},
 		{Title: "精算", Project: dayfile.Project{Code: "X-1", Name: "事務"}, Time: times(t, "30m", "60m", "16:00-17:00")},
-		{Title: "調べもの", Project: dev},
+		{Title: "調べもの", Project: dev, Untimed: true},
 		{Title: "勉強会", Project: dev, Exclude: true, Time: times(t, "12:00-13:00")},
 		{Title: "夜間作業", Project: dayfile.Project{Code: "M-1"}, Time: times(t, "23:00-05:00")},
-		{Title: "雑談", Project: dayfile.Project{Code: "Z-1", Name: "雑務"}, Exclude: true},
+		{Title: "雑談", Project: dayfile.Project{Code: "Z-1", Name: "雑務"}, Exclude: true, Untimed: true},
 		{Title: "付け先なし", Time: times(t, "15m")},
+		// 時間未入力 (時間の入れ忘れ) は、時間不定として数えない。
+		{Title: "入れ忘れ", Project: dayfile.Project{Code: "Y-1"}},
 	}}
 	s := Summarize(day)
 
@@ -48,6 +50,7 @@ func TestSummarize(t *testing.T) {
 		{360, false, true},
 		{0, true, false},
 		{15, false, true},
+		{0, false, false},
 	}
 	for i, w := range wantTasks {
 		got := s.Tasks[i]
@@ -67,6 +70,7 @@ func TestSummarize(t *testing.T) {
 		{"M-1", "M-1", 360, true, false, 1},
 		{"雑務", "Z-1", 0, false, false, 1},
 		{"", "", 15, true, false, 1},
+		{"Y-1", "Y-1", 0, false, false, 1},
 	}
 	if len(s.Projects) != len(wantProjects) {
 		t.Fatalf("len(Projects) = %d", len(s.Projects))
@@ -117,7 +121,7 @@ func TestCombine(t *testing.T) {
 		{Title: "勉強会", Project: dayfile.Project{Code: "S-1"}, Exclude: true, Time: times(t, "30m")},
 	}})
 	second := Summarize(dayfile.Day{Tasks: []dayfile.Task{
-		{Title: "調べもの", Project: dayfile.Project{Code: "R-1"}},
+		{Title: "調べもの", Project: dayfile.Project{Code: "R-1"}, Untimed: true},
 		{Title: "改修", Project: dayfile.Project{Code: "D-1", Name: "開発 (改)"}, Time: times(t, "90m")},
 	}})
 	got := Combine([]Summary{first, second})

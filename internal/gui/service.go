@@ -251,6 +251,7 @@ func (s *Service) UpdateRecord(date, title string, patch RecordPatch) (Opened, e
 	if _, err := s.app().UpdateRecord(d, title, app.RecordPatch{
 		Title:   patch.Title,
 		Time:    patch.Time,
+		Untimed: patch.Untimed,
 		Project: patch.Project.toDayfile(),
 		Tags:    patch.Tags,
 		Note:    patch.Note,

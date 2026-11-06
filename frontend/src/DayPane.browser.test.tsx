@@ -20,8 +20,9 @@ test("記録の一覧と予定の一覧のあいだも、記録どうしと同�
 			done: false,
 			times: [],
 			total: "",
+			untimed: false,
 		})),
-		plans: [{ title: "朝会", project: null, times: [] }],
+		plans: [{ title: "朝会", project: null, times: [], untimed: false }],
 	};
 	const screen = await renderApp(
 		<WithDay value={dayValue(day)}>
@@ -41,7 +42,7 @@ test("記録の一覧と予定の一覧のあいだも、記録どうしと同�
 test("記録がなければ、予定を一覧の上端から出す", async () => {
 	const day = {
 		...makeDay("2026-11-05"),
-		plans: [{ title: "朝会", project: null, times: [] }],
+		plans: [{ title: "朝会", project: null, times: [], untimed: false }],
 	};
 	const screen = await renderApp(
 		<WithDay value={dayValue(day)}>
@@ -51,4 +52,17 @@ test("記録がなければ、予定を一覧の上端から出す", async () =>
 	await expect.element(screen.getByText("朝会", { exact: true })).toBeVisible();
 	const plans = document.querySelector(".rows.plans") as HTMLElement;
 	expect(getComputedStyle(plans).marginTop).toBe("0px");
+});
+
+test("いつもの時間を時間不定にしたタスクの予定は、記録の行と同じく「不定」と出す", async () => {
+	const day = {
+		...makeDay("2026-11-05"),
+		plans: [{ title: "情報収集", project: null, times: [], untimed: true }],
+	};
+	const screen = await renderApp(
+		<WithDay value={dayValue(day)}>
+			<DayPane />
+		</WithDay>,
+	);
+	await expect.element(screen.getByText("不定", { exact: true })).toBeVisible();
 });

@@ -37,7 +37,7 @@ func (a *App) Render(date time.Time, name string) (RenderResult, error) {
 
 	// すべて作ってから返す。1 つでも作れなければ、書き出しもしない。
 	result := RenderResult{
-		Warnings: outOfPeriodWarnings(j.day, j.settings.Projects),
+		Warnings: append(outOfPeriodWarnings(j.day, j.settings.Projects), missingTimeWarnings(j.day)...),
 		Skipped:  j.skipped,
 	}
 	for _, o := range j.outputs {

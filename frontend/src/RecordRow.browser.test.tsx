@@ -30,10 +30,12 @@ const record: Record = {
 	exclude: false,
 	done: false,
 	times: [],
-	total: "",
+	// 時間未入力の記録。Go は合計に 0 を長さの表記で入れて返す。
+	total: "0:00",
+	untimed: false,
 };
 
-function Row() {
+function Row({ value = record }: { value?: Record }) {
 	const [open, setOpen] = useState<string | null>("調査");
 	return (
 		<WithDay
@@ -41,10 +43,69 @@ function Row() {
 				tags: ["ふりかえり", "調査", "Review"],
 			})}
 		>
-			<RecordRow record={record} open={open === "調査"} onOpen={setOpen} />
+			<RecordRow record={value} open={open === "調査"} onOpen={setOpen} />
 		</WithDay>
 	);
 }
+
+const timed: Record = {
+	...record,
+	times: [{ label: "0:30", input: "0:30", value: "30m" }],
+	total: "0:30",
+};
+
+test("時間不定の記録は、合計の位置に「不定」と出す", async () => {
+	const screen = await renderApp(<Row value={{ ...record, untimed: true }} />);
+	await expect.element(screen.getByText("不定", { exact: true })).toBeVisible();
+});
+
+test("時間未入力の記録は、合計の位置に 0 の時間を出す", async () => {
+	const screen = await renderApp(<Row />);
+	await expect.element(screen.getByText("0:00", { exact: true })).toBeVisible();
+	await expect
+		.element(screen.getByText("不定", { exact: true }))
+		.not.toBeInTheDocument();
+});
+
+test("詳しい表示の切り替えは、時間不定、計上しない、完了の順に並べる", async () => {
+	const screen = await renderApp(<Row />);
+	const labels = screen
+		.getByRole("checkbox")
+		.elements()
+		.map((e) => document.querySelector(`label[for="${e.id}"]`)?.textContent);
+	expect(labels).toEqual(["時間不定", "計上しない", "完了"]);
+});
+
+test("計上しないと完了の札は、タグと見分けられる形で出す", async () => {
+	const screen = await renderApp(
+		<Row value={{ ...record, tags: ["調査"], exclude: true, done: true }} />,
+	);
+	const tag = screen.getByText("#調査").element();
+	for (const label of ["計上しない", "完了"]) {
+		const badge = screen.getByText(label, { exact: true }).first().element();
+		expect(badge.className).not.toBe(tag.className);
+	}
+});
+
+test("詳しい表示で、時間のない記録を時間不定にする", async () => {
+	const screen = await renderApp(<Row />);
+	await screen.getByRole("checkbox", { name: "時間不定" }).click();
+	await vi.waitFor(() =>
+		expect(Service.UpdateRecord).toHaveBeenCalledExactlyOnceWith(
+			"2026-11-05",
+			"調査",
+			{ untimed: true },
+		),
+	);
+});
+
+test("時間がある記録は、時間不定にできない", async () => {
+	const screen = await renderApp(<Row value={timed} />);
+	await expect
+		.element(screen.getByRole("checkbox", { name: "時間不定" }))
+		.toBeDisabled();
+	await expect.element(screen.getByText("0:30").first()).toBeVisible();
+});
 
 async function askRemove() {
 	const screen = await renderApp(<Row />);
@@ -121,4 +182,38 @@ test("一覧にないタグも、打てば付けられる", async () => {
 			{ tags: ["新しいタグ"] },
 		),
 	);
+});
+
+const middle = (r: DOMRect) => (r.top + r.bottom) / 2;
+
+test("札はタスク名の下の段に出し、合計はその 2 段の高さの真ん中に出す", async () => {
+	const screen = await renderApp(
+		<Row value={{ ...timed, tags: ["調査"], exclude: true }} />,
+	);
+	const title = screen
+		.getByRole("button", { name: "調査", exact: true })
+		.element()
+		.getBoundingClientRect();
+	const badges = (
+		screen.getByText("#調査").element().closest(".row-badges") as HTMLElement
+	).getBoundingClientRect();
+	const total = (
+		document.querySelector(".row-total") as HTMLElement
+	).getBoundingClientRect();
+	expect(badges.top).toBeGreaterThanOrEqual(title.bottom);
+	expect(
+		Math.abs(middle(total) - (title.top + badges.bottom) / 2),
+	).toBeLessThan(2);
+});
+
+test("札がなければ 2 段目は出さず、合計はタスク名の高さの真ん中に出す", async () => {
+	await renderApp(<Row value={timed} />);
+	expect(document.querySelector(".row-badges")).toBeNull();
+	const title = (
+		document.querySelector(".row-title") as HTMLElement
+	).getBoundingClientRect();
+	const total = (
+		document.querySelector(".row-total") as HTMLElement
+	).getBoundingClientRect();
+	expect(Math.abs(middle(total) - middle(title))).toBeLessThan(2);
 });

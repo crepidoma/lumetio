@@ -112,6 +112,7 @@ const emptyTask: TaskEdit = {
 	tags: [],
 	exclude: false,
 	time: "",
+	untimed: false,
 	repeat: null,
 	favorite: false,
 };
@@ -149,6 +150,7 @@ function EditorForm({
 	const [tags, setTags] = useState(initial.tags ?? []);
 	const [exclude, setExclude] = useState(initial.exclude);
 	const [time, setTime] = useState(initial.time);
+	const [untimed, setUntimed] = useState(initial.untimed);
 	const [repeat, setRepeat] = useState<RepeatForm>(() =>
 		toForm(initial.repeat),
 	);
@@ -156,7 +158,8 @@ function EditorForm({
 	const [saving, setSaving] = useState(false);
 
 	// 設定のないタスクは items.yaml に書かないので、新しく作るときは、設定を付けるまで保存できない。
-	const hasSetting = favorite || time.trim() !== "" || repeat.kind !== "none";
+	const hasSetting =
+		favorite || time.trim() !== "" || untimed || repeat.kind !== "none";
 
 	const projectOptions = projects.map(projectLabel);
 
@@ -189,6 +192,7 @@ function EditorForm({
 					tags,
 					exclude,
 					time,
+					untimed,
 					repeat: fromForm(repeat),
 					favorite,
 				}),
@@ -240,7 +244,12 @@ function EditorForm({
 				checked={exclude}
 				onChange={(e) => setExclude(e.currentTarget.checked)}
 			/>
-			<UsualTime value={time} onChange={setTime} />
+			<UsualTime
+				value={time}
+				onChange={setTime}
+				untimed={untimed}
+				onUntimed={setUntimed}
+			/>
 			<Input.Wrapper label="繰り返し">
 				<SegmentedControl
 					fullWidth
@@ -289,13 +298,18 @@ function EditorForm({
 	);
 }
 
-// UsualTime は、いつもの時間の入力欄。記録の時間と同じく、打っているあいだに解釈した結果を出す。
+// UsualTime は、いつもの時間の入力欄と、時間不定の切り替え。記録の時間と同じく、打っているあいだに解釈した結果を出す。
+// いつもの時間と時間不定は両方を持たないので、片方が入っているあいだは、もう片方を使えなくする。
 function UsualTime({
 	value,
 	onChange,
+	untimed,
+	onUntimed,
 }: {
 	value: string;
 	onChange: (v: string) => void;
+	untimed: boolean;
+	onUntimed: (untimed: boolean) => void;
 }) {
 	const [focused, setFocused] = useState(false);
 	const [{ value: entries, error }] = usePreview(
@@ -305,16 +319,28 @@ function UsualTime({
 	const preview = entries ? entries.map((e) => e.label).join("  ") : null;
 
 	return (
-		<FieldPopover error={error} hint={focused ? preview : null}>
-			<TextInput
-				label="いつもの時間"
-				value={value}
-				error={!!error}
-				onFocus={() => setFocused(true)}
-				onBlur={() => setFocused(false)}
-				onChange={(e) => onChange(e.currentTarget.value)}
+		<Group gap="md" align="flex-end" wrap="nowrap">
+			<FieldPopover error={error} hint={focused ? preview : null}>
+				<TextInput
+					label="いつもの時間"
+					style={{ flex: 1 }}
+					value={value}
+					error={!!error}
+					disabled={untimed}
+					onFocus={() => setFocused(true)}
+					onBlur={() => setFocused(false)}
+					onChange={(e) => onChange(e.currentTarget.value)}
+				/>
+			</FieldPopover>
+			{/* 下に余白を付けて、入力欄の縦の真ん中にそろえる。 */}
+			<Checkbox
+				label="時間不定"
+				mb={8}
+				checked={untimed}
+				disabled={value.trim() !== ""}
+				onChange={(e) => onUntimed(e.currentTarget.checked)}
 			/>
-		</FieldPopover>
+		</Group>
 	);
 }
 

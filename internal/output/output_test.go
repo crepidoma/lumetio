@@ -17,7 +17,7 @@ var sampleDay = dayfile.Day{
 	Tasks: []dayfile.Task{
 		{Title: "画面の実装", Project: dayfile.Project{Code: "DEV-001", Name: "新機能"}, Time: []timeexpr.Entry{{Minutes: 90}}},
 		{Title: "週次ふりかえり", Project: dayfile.Project{Code: "MTG-01"}, Tags: []string{"ふりかえり"}, Note: "見積りが甘かった", Time: []timeexpr.Entry{{Minutes: 30}}},
-		{Title: "調査", Project: dayfile.Project{Code: "DEV-001", Name: "新機能"}},
+		{Title: "調査", Project: dayfile.Project{Code: "DEV-001", Name: "新機能"}, Untimed: true},
 		{Title: "雑談", Exclude: true, Time: []timeexpr.Entry{{Minutes: 15}}},
 	},
 	Notes: []dayfile.Note{

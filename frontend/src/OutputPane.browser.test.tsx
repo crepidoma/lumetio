@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { expect, test, vi } from "vitest";
-import { renderHook } from "vitest-browser-react";
+import { render, renderHook } from "vitest-browser-react";
 import { Service } from "../bindings/github.com/crepidoma/lumetio/internal/gui";
 import { useOutputs } from "./OutputPane";
 import { dayValue, makeDay, WithDay } from "./test/day";
@@ -72,4 +72,49 @@ test("選び直したら、前に選んでいたもののプレビューを残�
 	await act(() => result.current.select("工数"));
 	expect(result.current.name).toBe("工数");
 	expect(result.current.current).toBeUndefined();
+});
+
+// Pane は、コピーのボタンと確かめるダイアログを出す。useOutputs はダイアログを返すだけなので、描いて確かめるため。
+function Pane() {
+	const out = useOutputs(noNotices, 0);
+	return (
+		<>
+			<button type="button" onClick={out.copy}>
+				コピー
+			</button>
+			<span>{out.current?.text}</span>
+			{out.dialogs}
+		</>
+	);
+}
+
+// 計上する記録の時間未入力は、期間の外のプロジェクトと同じく、アプリの外へ出す前に確かめる。工数を取り込む前に、入れ忘れに気づけるようにするため。
+test("時間未入力の警告があれば、コピーの前に確かめる", async () => {
+	vi.mocked(Service.OutputChoices).mockResolvedValue({
+		sets: [],
+		outputs: ["日報"],
+		default: "日報",
+		notices: [],
+	});
+	vi.mocked(Service.Preview).mockResolvedValue({
+		outputs: [{ name: "日報", fileName: "日報.txt", text: "本文", error: "" }],
+		notices: [],
+	});
+	const warned = dayValue({
+		...makeDay("2026-11-05"),
+		warnings: ["調査 の時間が入っていません"],
+	});
+	const screen = await render(<Pane />, {
+		wrapper: ({ children }) => (
+			<Providers>
+				<WithDay value={warned}>{children}</WithDay>
+			</Providers>
+		),
+	});
+	await expect.element(screen.getByText("本文")).toBeVisible();
+	await screen.getByRole("button", { name: "コピー" }).click();
+	await expect.element(screen.getByText("続けますか？")).toBeVisible();
+	await expect
+		.element(screen.getByText("調査 の時間が入っていません"))
+		.toBeVisible();
 });
