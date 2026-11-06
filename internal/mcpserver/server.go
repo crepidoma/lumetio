@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/crepidoma/lumetio/internal/app"
+	"github.com/crepidoma/lumetio/internal/effort"
 	"github.com/crepidoma/lumetio/internal/output"
 	"github.com/crepidoma/lumetio/internal/yamlfile"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -25,7 +26,12 @@ func New(a *app.App, version string) *mcp.Server {
 		Instructions: "日々のタスクの記録 (日報と工数) を読み書きする。" +
 			"日付は YYYY-MM-DD で、省略すると今日。" +
 			"記録は、その日のタスク名で指す。" +
-			"記録を足す前に list_tasks で既存のタスク名を確かめ、同じタスクには同じ名前を使う。",
+			"記録を足す前に list_tasks で既存のタスク名を確かめ、同じタスクには同じ名前を使う。" +
+			"時間不定 (untimed) の記録は、時間を決めずに記録したもので、入れ忘れとは限らない。日報には載り、工数の合計には足さない。時間不定の記録に時間を入れるのは、ユーザーに頼まれたときだけにする。" +
+			"計上しない (exclude) の記録は、日報には載り、工数には入らない。" +
+			"予定 (plans) は、定期的なタスクからその日に出ている、まだ記録にしていないもの。日報にも工数にも入らない。add_records で同じ名前のタスクを足すと記録になり、skip_plans でその日だけ消せる。" +
+			"完了 (done) は、終わったタスクを直近のタスクの一覧から外す印。" +
+			"日報や工数 CSV の形は推測せず、render_output で作って確かめる。",
 	})
 	h := handlers{app: a}
 
@@ -42,22 +48,31 @@ func New(a *app.App, version string) *mcp.Server {
 		Description: "タグの一覧を返す。記録にタグを付けるときは、この一覧の名前を使う。",
 	}, h.listTags)
 	mcp.AddTool(s, &mcp.Tool{
+		Name:        "list_outputs",
+		Description: "出力と出力セットの名前と、既定の出力を返す。render_output と export_output_set の name には、この名前を使う。",
+	}, h.listOutputs)
+	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get_days",
-		Description: fmt.Sprintf("期間の各日の記録、予定 (まだ記録にしていない定期的なタスク)、スキップした予定、メモ欄、プロジェクトごとの合計を返す。期間は最大 %d 日。省略すると今日 1 日。", maxDays),
+		Description: fmt.Sprintf("期間の各日の記録、予定 (まだ記録にしていない定期的なタスク)、スキップした予定、メモ欄、プロジェクトごとの合計を返す。2 日以上を読むと、期間のプロジェクトごとの合計 (period) も返す。期間は最大 %d 日。省略すると今日 1 日。", maxDays),
 	}, h.getDays)
 	mcp.AddTool(s, &mcp.Tool{
 		Name: "add_records",
 		Description: "その日の記録にタスクをまとめて足す。1 つでも誤りがあれば何も書かない。" +
 			"予定と同じ名前のタスクを足すと、予定は記録になる (実施済)。" +
-			"時間を省略すると、いつもの時間で入る。" +
+			"時間を省略すると、いつもの時間で入る。いつもの時間がなければ、時間不定で入る。" +
 			"プロジェクトなどを省略すると、タスクの設定か、そのタスクの一番新しい記録から写す。" +
 			"その日にもう同じタスクの記録があれば、時間だけを足す。",
 	}, h.addRecords)
 	mcp.AddTool(s, &mcp.Tool{
 		Name: "update_record",
 		Description: "その日の記録を直す。指定した項目だけを変える。" +
+			"タスク名 (new_title) は打ち間違いを直すためのもので、その日の記録の名前だけを変える。" +
 			"完了 (done) は、そのタスクを最後に記録した日の記録に付ける。完了にしたタスクは、直近のタスクに出なくなる。",
 	}, h.updateRecord)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "reorder_records",
+		Description: "その日の記録を並べ替える。日報などの出力は、この並びで記録を出す。その日の記録のタスク名をすべて、並べたい順に渡す。",
+	}, h.reorderRecords)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "remove_record",
 		Description: "その日の記録を消す。取り消しはできない。",
@@ -76,7 +91,7 @@ func New(a *app.App, version string) *mcp.Server {
 	}, h.renderOutput)
 	mcp.AddTool(s, &mcp.Tool{
 		Name: "export_output_set",
-		Description: "その日の出力セットを作って、出力先のフォルダに書く。名前を省略すると既定の出力。" +
+		Description: "その日の出力か出力セットを作って、出力先のフォルダに書く。名前を省略すると既定の出力。" +
 			"出力先に同じ名前のファイルがあれば、on_conflict を省略したときは何も書かずにエラーを返す。ユーザーに上書きか別名かを尋ねてから、on_conflict を指定して呼び直す。",
 	}, h.exportOutputSet)
 	return s
@@ -145,6 +160,14 @@ func (h handlers) listTags(_ context.Context, _ *mcp.CallToolRequest, _ noInput)
 	return nil, tagsOutput{Tags: append([]string{}, tags...)}, nil
 }
 
+func (h handlers) listOutputs(_ context.Context, _ *mcp.CallToolRequest, _ noInput) (*mcp.CallToolResult, outputsOutput, error) {
+	c, err := h.app.Choices()
+	if err != nil {
+		return nil, outputsOutput{}, toolError(err)
+	}
+	return nil, outputsOutput{Sets: nonNil(c.Sets), Outputs: nonNil(c.Outputs), Default: c.Default, Notices: nonNil(c.Skipped)}, nil
+}
+
 func (h handlers) getDays(_ context.Context, _ *mcp.CallToolRequest, in getDaysInput) (*mcp.CallToolResult, daysOutput, error) {
 	from, err := h.date(in.From)
 	if err != nil {
@@ -163,12 +186,18 @@ func (h handlers) getDays(_ context.Context, _ *mcp.CallToolRequest, in getDaysI
 		return nil, daysOutput{}, fmt.Errorf("期間は %d 日までです (%d 日を指定しました)", maxDays, n)
 	}
 	out := daysOutput{Days: []dayOutput{}}
+	var summaries []effort.Summary
 	for d := from; !d.After(to); d = d.AddDate(0, 0, 1) {
 		view, err := h.app.Day(d)
 		if err != nil {
 			return nil, daysOutput{}, toolError(err)
 		}
 		out.Days = append(out.Days, newDayOutput(view))
+		summaries = append(summaries, view.Summary)
+	}
+	// 1 日だけなら、その日の合計と同じなので返さない。
+	if len(summaries) > 1 {
+		out.Period = newPeriodOutput(effort.Combine(summaries))
 	}
 	return nil, out, nil
 }
@@ -202,6 +231,7 @@ func (h handlers) updateRecord(_ context.Context, _ *mcp.CallToolRequest, in upd
 		return nil, writeOutput{}, err
 	}
 	warnings, err := h.app.UpdateRecord(date, in.Title, app.RecordPatch{
+		Title:   in.NewTitle,
 		Time:    in.Time,
 		Project: in.Project.toApp(),
 		Tags:    in.Tags,
@@ -213,6 +243,17 @@ func (h handlers) updateRecord(_ context.Context, _ *mcp.CallToolRequest, in upd
 		return nil, writeOutput{}, toolError(err)
 	}
 	return nil, newWriteOutput(warnings), nil
+}
+
+func (h handlers) reorderRecords(_ context.Context, _ *mcp.CallToolRequest, in reorderRecordsInput) (*mcp.CallToolResult, writeOutput, error) {
+	date, err := h.date(in.Date)
+	if err != nil {
+		return nil, writeOutput{}, err
+	}
+	if err := h.app.SetRecordOrder(date, in.Titles); err != nil {
+		return nil, writeOutput{}, toolError(err)
+	}
+	return nil, newWriteOutput(nil), nil
 }
 
 func (h handlers) removeRecord(_ context.Context, _ *mcp.CallToolRequest, in titleInput) (*mcp.CallToolResult, writeOutput, error) {

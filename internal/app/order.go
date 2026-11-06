@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/crepidoma/lumetio/internal/dayfile"
@@ -11,9 +12,29 @@ import (
 )
 
 // ReorderRecords は、その日の記録を titles の順に並べ替える。
-// titles は、その日の記録の名前をすべて、新しい順に並べたもの。
+// titles は、その日の記録の名前をすべて、並べたい順に並べたもの。
 // 画面に出していた記録とファイルの記録が食い違うときは、他で変わったものとして書かない。
 func (a *App) ReorderRecords(date time.Time, titles []string) error {
+	return a.reorderRecords(date, titles, func(dayfile.Day) error {
+		return fmt.Errorf("%s の記録が変わっています: %w", yamlfile.DateOnly(date).Format(yamlfile.DateLayout), ErrConflict)
+	})
+}
+
+// SetRecordOrder は、その日の記録を titles の順に並べ替える。MCP から使う。
+// titles が記録の名前をちょうど 1 回ずつ含んでいなければ、他での変更ではなく渡し間違いなので、今の記録の名前を入れた入力の誤りにする。
+// 一部だけを渡されたときに残りの置き場所を決めると、思った並びにならないので、すべてそろうまで書かない。
+func (a *App) SetRecordOrder(date time.Time, titles []string) error {
+	return a.reorderRecords(date, titles, func(day dayfile.Day) error {
+		names := make([]string, 0, len(day.Tasks))
+		for _, t := range day.Tasks {
+			names = append(names, t.Title)
+		}
+		return inputErrorf("その日の記録のタスク名をすべて、1 回ずつ渡します。今の記録: %s", strings.Join(names, "、"))
+	})
+}
+
+// reorderRecords は、その日の記録を titles の順に並べ替える。titles が記録の名前とそろわなければ、mismatch の誤りを返す。
+func (a *App) reorderRecords(date time.Time, titles []string, mismatch func(dayfile.Day) error) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	day, v, err := a.store.LoadDay(date)
@@ -22,7 +43,7 @@ func (a *App) ReorderRecords(date time.Time, titles []string) error {
 	}
 	ordered, ok := reorder(day.Tasks, titles, func(t dayfile.Task) string { return t.Title })
 	if !ok {
-		return fmt.Errorf("%s の記録が変わっています: %w", yamlfile.DateOnly(date).Format(yamlfile.DateLayout), ErrConflict)
+		return mismatch(day)
 	}
 	// 並びが変わらなければ書かない。記録のない日のファイルを作らないため。
 	if sameOrder(ordered, day.Tasks, func(t dayfile.Task) string { return t.Title }) {
