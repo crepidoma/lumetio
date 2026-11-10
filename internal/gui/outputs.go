@@ -107,3 +107,29 @@ func (s *Service) Export(date, name, onConflict string) (ExportResult, error) {
 	}
 	return out, nil
 }
+
+// OpenOutputFile は、name (出力か出力セット) の中の出力 outputName を、出力先に書いたファイルを標準のアプリで開く。
+// まだ出力していなければ、開かずに入力の誤りを返す。
+func (s *Service) OpenOutputFile(date, name, outputName string) error {
+	d, err := s.date(date)
+	if err != nil {
+		return err
+	}
+	path, err := s.app().OutputFile(d, name, outputName)
+	if err != nil {
+		return err
+	}
+	return s.env.Open(path)
+}
+
+// OpenOutputDir は、出力先のフォルダをファイラーで開く。まだなければ、開かずに入力の誤りを返す。
+func (s *Service) OpenOutputDir() error {
+	if s.startErr != nil {
+		return s.startErr
+	}
+	dir, err := s.app().OutputDirToOpen()
+	if err != nil {
+		return err
+	}
+	return s.env.Open(dir)
+}

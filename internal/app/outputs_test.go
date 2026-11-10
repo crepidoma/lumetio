@@ -2,6 +2,7 @@ package app
 
 import (
 	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 
@@ -70,5 +71,38 @@ func TestExportDuplicateFileName(t *testing.T) {
 	}
 	if entries, _ := os.ReadDir(f.out); len(entries) != 0 {
 		t.Errorf("書いた: %v", entries)
+	}
+}
+
+// 出力したファイルを開き直すため、出力と同じ決まりでファイルの場所を返す。まだ書いていなければ入力の誤りにする。
+func TestOutputFile(t *testing.T) {
+	f := newFixture(t)
+	f.write("templates/日報テキスト.tmpl", "---\nfile: \"'report_'yyyyMMdd\"\nextension: txt\n---\n本文\n")
+	f.write("templates/工数.csv.yaml", "kind: csv\nfile: \"'effort_'yyyyMMdd\"\nrows: projects\ncolumns:\n  - header: コード\n    value: \"{{.code}}\"\n")
+	f.write("templates/日報.set.yaml", "kind: set\noutputs: [日報テキスト, 工数]\n")
+
+	if _, err := f.app.OutputDirToOpen(); !IsInputError(err) {
+		t.Errorf("出力先がまだない: err = %v", err)
+	}
+	if _, err := f.app.OutputFile(today, "日報", "日報テキスト"); !IsInputError(err) {
+		t.Errorf("まだ出力していない: err = %v", err)
+	}
+
+	if _, _, err := f.app.Export(today, "日報", output.ConflictAsk); err != nil {
+		t.Fatal(err)
+	}
+	got, err := f.app.OutputFile(today, "日報", "工数")
+	if err != nil || got != filepath.Join(f.out, "effort_20261105.csv") {
+		t.Errorf("OutputFile = %q, %v", got, err)
+	}
+	// 出力 1 つを選んでいるときは、その出力の名前で指す。
+	if got, err := f.app.OutputFile(today, "日報テキスト", "日報テキスト"); err != nil || got != filepath.Join(f.out, "report_20261105.txt") {
+		t.Errorf("出力 1 つ: %q, %v", got, err)
+	}
+	if _, err := f.app.OutputFile(today, "日報", "ない"); !IsInputError(err) {
+		t.Errorf("セットにない出力: err = %v", err)
+	}
+	if dir, err := f.app.OutputDirToOpen(); err != nil || dir != f.out {
+		t.Errorf("OutputDirToOpen = %q, %v", dir, err)
 	}
 }
