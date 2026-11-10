@@ -840,6 +840,12 @@ body {
 	font-size: 14px;
 }
 
+/* 出力したものを開くメニューのボタン。コピーと出力より使うことが少ないので、広げずにボタンの高さと同じ幅にする。 */
+.output-actions .output-more {
+	flex: none;
+	width: 40px;
+}
+
 .output-actions button:disabled {
 	opacity: 0.5;
 	cursor: default;

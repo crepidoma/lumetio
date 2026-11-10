@@ -2,12 +2,17 @@ import type { ReactNode } from "react";
 import { expect, test, vi } from "vitest";
 import { render, renderHook } from "vitest-browser-react";
 import { Service } from "../bindings/github.com/crepidoma/lumetio/internal/gui";
-import { useOutputs } from "./OutputPane";
+import { OutputPane, useOutputs } from "./OutputPane";
 import { dayValue, makeDay, WithDay } from "./test/day";
 import { Providers } from "./test/render";
 
 vi.mock("../bindings/github.com/crepidoma/lumetio/internal/gui", () => ({
-	Service: { OutputChoices: vi.fn(), Preview: vi.fn() },
+	Service: {
+		OutputChoices: vi.fn(),
+		Preview: vi.fn(),
+		OpenOutputFile: vi.fn(async () => {}),
+		OpenOutputDir: vi.fn(async () => {}),
+	},
 }));
 
 const day = dayValue(makeDay("2026-11-05"));
@@ -117,4 +122,48 @@ test("時間未入力の警告があれば、コピーの前に確かめる", as
 	await expect
 		.element(screen.getByText("調査 の時間が入っていません"))
 		.toBeVisible();
+});
+
+// FullPane は、右ペインの出力をそのまま描く。
+function FullPane() {
+	const out = useOutputs(noNotices, 0);
+	return <OutputPane out={out} morphTarget={false} />;
+}
+
+// 出力したファイルとフォルダを、出力の横のメニューから開き直せる。ファイルは表示中のタブの出力で指す。
+test("出力の横のメニューから、表示中のファイルと出力先のフォルダを開く", async () => {
+	vi.mocked(Service.OutputChoices).mockResolvedValue({
+		sets: ["日報"],
+		outputs: [],
+		default: "日報",
+		notices: [],
+	});
+	vi.mocked(Service.Preview).mockResolvedValue({
+		outputs: [
+			{ name: "日報テキスト", fileName: "a.txt", text: "本文", error: "" },
+			{ name: "工数", fileName: "b.csv", text: "列", error: "" },
+		],
+		notices: [],
+	});
+	const screen = await render(<FullPane />, { wrapper });
+	await screen.getByRole("tab", { name: "工数" }).click();
+	await expect.element(screen.getByText("列")).toBeVisible();
+
+	await screen.getByRole("button", { name: "出力したものを開く" }).click();
+	await screen
+		.getByRole("menuitem", { name: "表示中のファイルを開く" })
+		.click();
+	await vi.waitFor(() =>
+		expect(Service.OpenOutputFile).toHaveBeenCalledExactlyOnceWith(
+			"2026-11-05",
+			"日報",
+			"工数",
+		),
+	);
+
+	await screen.getByRole("button", { name: "出力したものを開く" }).click();
+	await screen
+		.getByRole("menuitem", { name: "出力先のフォルダを開く" })
+		.click();
+	await vi.waitFor(() => expect(Service.OpenOutputDir).toHaveBeenCalledOnce());
 });

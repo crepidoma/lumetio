@@ -131,6 +131,21 @@ export function Open(date: string): $CancellablePromise<$models.Opened> {
 }
 
 /**
+ * OpenOutputDir は、出力先のフォルダをファイラーで開く。まだなければ、開かずに入力の誤りを返す。
+ */
+export function OpenOutputDir(): $CancellablePromise<void> {
+    return $Call.ByID(1237054121);
+}
+
+/**
+ * OpenOutputFile は、name (出力か出力セット) の中の出力 outputName を、出力先に書いたファイルを標準のアプリで開く。
+ * まだ出力していなければ、開かずに入力の誤りを返す。
+ */
+export function OpenOutputFile(date: string, name: string, outputName: string): $CancellablePromise<void> {
+    return $Call.ByID(3995841732, date, name, outputName);
+}
+
+/**
  * OutputChoices は、右ペインで選べる出力セットと出力を返す。
  */
 export function OutputChoices(): $CancellablePromise<$models.OutputChoices> {

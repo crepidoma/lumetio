@@ -22,6 +22,12 @@ function Icon({ size = 16, children }: Props & { children: ReactNode }) {
 	);
 }
 
+export const ChevronDown = (p: Props) => (
+	<Icon {...p}>
+		<path d="M6 9l6 6 6-6" />
+	</Icon>
+);
+
 export const ChevronLeft = (p: Props) => (
 	<Icon {...p}>
 		<path d="M15 18l-6-6 6-6" />

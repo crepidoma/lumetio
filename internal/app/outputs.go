@@ -1,6 +1,10 @@
 package app
 
 import (
+	"errors"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -83,6 +87,50 @@ func (a *App) loadJob(date time.Time, name string) (job, error) {
 // OutputDir は出力先のフォルダを返す。
 func (a *App) OutputDir() string {
 	return a.outputDir
+}
+
+// OutputDirToOpen は、ファイラーで開く出力先のフォルダを返す。まだなければ入力の誤りにする。
+// 一度も出力していないと、出力先のフォルダはまだ作られていないため。
+func (a *App) OutputDirToOpen() (string, error) {
+	if err := mustExist(a.outputDir, "出力先のフォルダ "+a.outputDir+" はまだありません"); err != nil {
+		return "", err
+	}
+	return a.outputDir, nil
+}
+
+// OutputFile は、name (出力か出力セットの名前。空なら既定の出力) の中の出力 outputName を、出力先に書いたときのファイルの場所を返す。
+// ファイルの名前は出力するときと同じ決まりで作り、画面から受け取らない。画面から渡された場所を開くと、出力先の外も開けてしまうため。
+// まだ出力していなければ、入力の誤りにする。
+func (a *App) OutputFile(date time.Time, name, outputName string) (string, error) {
+	j, err := a.loadJob(date, name)
+	if err != nil {
+		return "", err
+	}
+	outputName = cleanName(outputName)
+	for _, o := range j.outputs {
+		if o.Name != outputName {
+			continue
+		}
+		r, err := o.Render(j.day, j.settings.Notes)
+		if err != nil {
+			return "", inputErrorf("出力 %s を作れません: %v", o.Name, err)
+		}
+		path := filepath.Join(a.outputDir, r.FileName)
+		if err := mustExist(path, r.FileName+" はまだ出力していません"); err != nil {
+			return "", err
+		}
+		return path, nil
+	}
+	return "", inputErrorf("出力 %s がありません", outputName)
+}
+
+// mustExist は、path がまだなければ、message を入力の誤りとして返す。
+func mustExist(path, message string) error {
+	_, err := os.Stat(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return &InputError{Message: message}
+	}
+	return err
 }
 
 // Choices は、画面で選べる出力セットと出力。

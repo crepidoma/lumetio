@@ -1,4 +1,4 @@
-import { Button, Select, Text } from "@mantine/core";
+import { Button, Menu, Select, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { Clipboard } from "@wailsio/runtime";
 import { type ReactNode, type Ref, useEffect, useState } from "react";
@@ -11,7 +11,7 @@ import {
 import { call, showInputError } from "./api";
 import { ConfirmModal } from "./ConfirmModal";
 import { useDay } from "./DayContext";
-import { ChevronsLeft, ChevronsRight } from "./icons";
+import { ChevronDown, ChevronsLeft, ChevronsRight } from "./icons";
 import { morphNames } from "./morph";
 
 // 確認のダイアログで待っている操作。
@@ -32,6 +32,9 @@ export type Outputs = {
 	previewError: string | null;
 	copy: () => void;
 	exportAll: () => void;
+	// openFile は表示中の出力を出力先に書いたファイルを、openDir は出力先のフォルダを開く。
+	openFile: () => void;
+	openDir: () => void;
 	// dialogs は確認のダイアログ。右ペインを畳んでいても出せるよう、ペインの外に置く。
 	dialogs: ReactNode;
 };
@@ -179,6 +182,23 @@ export function useOutputs(
 		}
 	};
 
+	// 出力したファイルとフォルダを開き直す。まだ書いていなければ、Go が開かずに知らせる。
+	const openFile = async () => {
+		if (!name || !current) return;
+		const r = await call(
+			() => Service.OpenOutputFile(date, name, current.name),
+			() => {},
+		);
+		if (!r.ok) showInputError(r.inputError);
+	};
+	const openDir = async () => {
+		const r = await call(
+			() => Service.OpenOutputDir(),
+			() => {},
+		);
+		if (!r.ok) showInputError(r.inputError);
+	};
+
 	const dialogs = (
 		<>
 			<ConfirmModal
@@ -250,6 +270,8 @@ export function useOutputs(
 		previewError,
 		copy: () => confirmWarnings(copyNow),
 		exportAll: () => confirmWarnings(() => exportNow("ask")),
+		openFile,
+		openDir,
 		dialogs,
 	};
 }
@@ -331,6 +353,24 @@ export function OutputPane({
 				>
 					出力
 				</button>
+				{/* 出力したファイルとフォルダを開き直す。出力の続きの操作なので、出力の横に置く。 */}
+				<Menu position="bottom-end">
+					<Menu.Target>
+						<button
+							type="button"
+							className="text-button output-more"
+							aria-label="出力したものを開く"
+						>
+							<ChevronDown />
+						</button>
+					</Menu.Target>
+					<Menu.Dropdown>
+						<Menu.Item disabled={!canCopy(out)} onClick={out.openFile}>
+							表示中のファイルを開く
+						</Menu.Item>
+						<Menu.Item onClick={out.openDir}>出力先のフォルダを開く</Menu.Item>
+					</Menu.Dropdown>
+				</Menu>
 			</div>
 		</section>
 	);

@@ -83,3 +83,41 @@ func TestPanes(t *testing.T) {
 		t.Errorf("local.yaml = %q", data)
 	}
 }
+
+// 出力したファイルと出力先のフォルダを、標準のアプリとファイラーで開き直せる。
+func TestOpenOutput(t *testing.T) {
+	root := t.TempDir()
+	out := filepath.Join(t.TempDir(), "out")
+	write(t, root, "templates/日報テキスト.tmpl", "---\nfile: \"'report_'yyyyMMdd\"\nextension: txt\n---\n本文\n")
+	now := time.Date(2026, 11, 5, 15, 20, 0, 0, time.Local)
+	var opened []string
+	s := New(app.New(store.New(root), out, func() time.Time { return now }), nil, Env{Open: func(path string) error {
+		opened = append(opened, path)
+		return nil
+	}})
+
+	// まだ出力していなければ、開かずに入力の誤りにする。
+	if err := s.OpenOutputFile("2026-11-05", "日報テキスト", "日報テキスト"); !app.IsInputError(err) {
+		t.Errorf("まだ出力していない: err = %v", err)
+	}
+	if err := s.OpenOutputDir(); !app.IsInputError(err) {
+		t.Errorf("出力先がまだない: err = %v", err)
+	}
+	if len(opened) != 0 {
+		t.Fatalf("opened = %v", opened)
+	}
+
+	if _, err := s.Export("2026-11-05", "日報テキスト", "ask"); err != nil {
+		t.Fatal(err)
+	}
+	opened = nil
+	if err := s.OpenOutputFile("2026-11-05", "日報テキスト", "日報テキスト"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.OpenOutputDir(); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(opened, []string{filepath.Join(out, "report_20261105.txt"), out}) {
+		t.Errorf("opened = %v", opened)
+	}
+}
