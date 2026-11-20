@@ -101,7 +101,7 @@ func TestListTools(t *testing.T) {
 		names = append(names, tool.Name)
 	}
 	slices.Sort(names)
-	want := []string{"add_records", "export_output_set", "get_days", "list_outputs", "list_projects", "list_tags", "list_tasks", "remove_record", "render_output", "reorder_records", "set_notes", "skip_plans", "update_record"}
+	want := []string{"add_records", "export_output_set", "get_days", "list_outputs", "list_projects", "list_tags", "list_tasks", "read_exported_files", "remove_record", "render_output", "reorder_records", "set_notes", "skip_plans", "update_record"}
 	if !slices.Equal(names, want) {
 		t.Errorf("tools = %v", names)
 	}
@@ -213,6 +213,7 @@ func TestToolErrors(t *testing.T) {
 		{"remove_record", map[string]any{"title": "ない"}, "記録はありません"},
 		{"render_output", map[string]any{"name": "ない"}, "日報テキスト"},
 		{"export_output_set", map[string]any{"on_conflict": "skip"}, "overwrite、rename、ask"},
+		{"read_exported_files", map[string]any{"name": "ない"}, "日報テキスト"},
 	}
 	for _, tt := range tests {
 		if msg := call(t, cs, tt.tool, tt.args, nil); !strings.Contains(msg, tt.want) {
@@ -462,5 +463,31 @@ func TestReorderRecordsNFC(t *testing.T) {
 	}
 	if r := out.Days[0].Records; r[0].Title != "朝会" || r[1].Title != "ガイド" {
 		t.Errorf("records = %+v", r)
+	}
+}
+
+// 出力した後に手で書き足したファイルを読む。まだ出力していなければ、ファイルがないと返す。
+func TestReadExportedFiles(t *testing.T) {
+	cs, out := connect(t)
+
+	var got exportedFilesResult
+	if msg := call(t, cs, "read_exported_files", map[string]any{}, &got); msg != "" {
+		t.Fatal(msg)
+	}
+	if len(got.Files) != 1 || got.Files[0].Exists || got.Files[0].FileName != "report_20261105.txt" {
+		t.Errorf("出力する前: %+v", got)
+	}
+
+	if msg := call(t, cs, "export_output_set", map[string]any{}, nil); msg != "" {
+		t.Fatal(msg)
+	}
+	if err := os.WriteFile(filepath.Join(out, "report_20261105.txt"), []byte("朝会 0:15\n所感\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if msg := call(t, cs, "read_exported_files", map[string]any{"date": "2026-11-05", "name": "日報"}, &got); msg != "" {
+		t.Fatal(msg)
+	}
+	if len(got.Files) != 1 || !got.Files[0].Exists || got.Files[0].Name != "日報テキスト" || got.Files[0].Text != "朝会 0:15\n所感\n" {
+		t.Errorf("書き足した後: %+v", got)
 	}
 }

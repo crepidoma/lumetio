@@ -106,3 +106,52 @@ func TestOutputFile(t *testing.T) {
 		t.Errorf("OutputDirToOpen = %q, %v", dir, err)
 	}
 }
+
+// 出力した後に手で書き足したファイルを読む。書いていない出力はファイルがないと返し、ほかの出力は返す。
+func TestReadExported(t *testing.T) {
+	f := newFixture(t)
+	f.write("templates/日報テキスト.tmpl", "---\nfile: \"'report_'yyyyMMdd\"\nextension: txt\n---\n本文\n")
+	f.write("templates/工数.csv.yaml", "kind: csv\nfile: \"'effort_'yyyyMMdd\"\nrows: projects\ncolumns:\n  - header: コード\n    value: \"{{.code}}\"\n")
+	f.write("templates/日報.set.yaml", "kind: set\noutputs: [日報テキスト, 工数]\n")
+	if _, _, err := f.app.Export(today, "日報テキスト", output.ConflictAsk); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(f.out, "report_20261105.txt"), []byte("本文\n所感\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := f.app.ReadExported(today, "日報")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []ExportedFile{
+		{Name: "日報テキスト", FileName: "report_20261105.txt", Exists: true, Text: "本文\n所感\n"},
+		{Name: "工数", FileName: "effort_20261105.csv"},
+	}
+	if !slices.Equal(r.Files, want) {
+		t.Errorf("Files = %+v", r.Files)
+	}
+	if _, err := f.app.ReadExported(today, "ない"); !IsInputError(err) {
+		t.Errorf("ない名前: err = %v", err)
+	}
+}
+
+// 名前は日付と出力の定義だけで決まるので、日次ファイルが読めなくてもファイルは読める。
+func TestReadExportedWithoutDay(t *testing.T) {
+	f := newFixture(t)
+	f.write("templates/日報テキスト.tmpl", "---\nfile: \"'report_'yyyyMMdd\"\nextension: txt\n---\n本文\n")
+	f.write("days/2026/2026-11-05.yaml", "date: 2026-11-04\n")
+	if _, err := f.app.Render(today, "日報テキスト"); err == nil {
+		t.Fatal("日次ファイルが読めてしまう")
+	}
+	if err := os.MkdirAll(f.out, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(f.out, "report_20261105.txt"), []byte("所感\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r, err := f.app.ReadExported(today, "日報テキスト")
+	if err != nil || len(r.Files) != 1 || r.Files[0].Text != "所感\n" {
+		t.Errorf("ReadExported = %+v, %v", r, err)
+	}
+}

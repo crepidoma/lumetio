@@ -357,3 +357,24 @@ func newRenderOutputResult(r app.RenderResult) renderOutputResult {
 	}
 	return out
 }
+
+type exportedFile struct {
+	Name     string `json:"name"`
+	FileName string `json:"file_name"`
+	Exists   bool   `json:"exists" jsonschema:"出力先にファイルがある。false なら、まだ出力していない"`
+	Text     string `json:"text" jsonschema:"ファイルの中身。ユーザーが手で書き足した分を含む"`
+	Error    string `json:"error,omitempty" jsonschema:"ファイルを読めなかった理由"`
+}
+
+type exportedFilesResult struct {
+	Files   []exportedFile `json:"files"`
+	Notices []string       `json:"notices" jsonschema:"読めずに除いたテンプレートなどの知らせ"`
+}
+
+func newExportedFilesResult(r app.ExportedFiles) exportedFilesResult {
+	out := exportedFilesResult{Files: []exportedFile{}, Notices: nonNil(r.Skipped)}
+	for _, f := range r.Files {
+		out.Files = append(out.Files, exportedFile{Name: f.Name, FileName: f.FileName, Exists: f.Exists, Text: f.Text, Error: f.Err})
+	}
+	return out
+}

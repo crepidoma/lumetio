@@ -50,7 +50,7 @@ func New(a *app.App, version string) *mcp.Server {
 	}, h.listTags)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "list_outputs",
-		Description: "出力と出力セットの名前と、既定の出力を返す。render_output と export_output_set の name には、この名前を使う。",
+		Description: "出力と出力セットの名前と、既定の出力を返す。render_output、export_output_set、read_exported_files の name には、この名前を使う。",
 	}, h.listOutputs)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "get_days",
@@ -97,6 +97,12 @@ func New(a *app.App, version string) *mcp.Server {
 		Description: "その日の出力か出力セットを作って、出力先のフォルダに書く。名前を省略すると既定の出力。" +
 			"出力先に同じ名前のファイルがあれば、on_conflict を省略したときは何も書かずにエラーを返す。ユーザーに上書きか別名かを尋ねてから、on_conflict を指定して呼び直す。",
 	}, h.exportOutputSet)
+	mcp.AddTool(s, &mcp.Tool{
+		Name: "read_exported_files",
+		Description: "その日に出力先のフォルダへ書いた、出力か出力セットのファイルの中身を返す。名前を省略すると既定の出力。" +
+			"出力はユーザーが出力した後に手で書き足して (所感など) 完成させるので、ユーザーが書き足した後の日報などを読むときに使う。今の記録から作るときは render_output を使う。" +
+			"出力ごとに、ファイルがあるか (exists) と中身を返す。ファイルがない出力はまだ出力していない。",
+	}, h.readExportedFiles)
 	return s
 }
 
@@ -330,4 +336,16 @@ func (h handlers) exportOutputSet(_ context.Context, _ *mcp.CallToolRequest, in 
 		return nil, exportResult{}, toolError(err)
 	}
 	return nil, exportResult{Written: written, Warnings: nonNil(r.Warnings), Notices: nonNil(r.Skipped)}, nil
+}
+
+func (h handlers) readExportedFiles(_ context.Context, _ *mcp.CallToolRequest, in outputInput) (*mcp.CallToolResult, exportedFilesResult, error) {
+	date, err := h.date(in.Date)
+	if err != nil {
+		return nil, exportedFilesResult{}, err
+	}
+	r, err := h.app.ReadExported(date, in.Name)
+	if err != nil {
+		return nil, exportedFilesResult{}, toolError(err)
+	}
+	return nil, newExportedFilesResult(r), nil
 }
