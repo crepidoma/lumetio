@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/crepidoma/lumetio/internal/dayfile"
 	"github.com/crepidoma/lumetio/internal/effort"
@@ -41,6 +42,12 @@ func (r Result) Bytes() []byte {
 	return []byte(s)
 }
 
+// FileName は、その日の出力を書くファイルの名前。
+// 書くときと読むときで、同じ名前にするため。
+func (o Output) FileName(date time.Time) string {
+	return o.File.Format(date) + "." + o.Extension
+}
+
 // Render はその日の記録から出力を作る。
 // noteDefs は settings.yaml のメモ欄の定義。
 // 予定は day に含まれないので、出力にも入らない。
@@ -59,7 +66,7 @@ func (o Output) Render(day dayfile.Day, noteDefs []settings.NoteDef) (Result, er
 		return Result{}, err
 	}
 	return Result{
-		FileName: o.File.Format(day.Date) + "." + o.Extension,
+		FileName: o.FileName(day.Date),
 		Text:     text,
 		encoding: o.Encoding,
 		newline:  o.Newline,

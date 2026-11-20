@@ -65,15 +65,7 @@ type job struct {
 
 // loadJob は、設定、テンプレート、その日を読み、name から作る出力を選ぶ。
 func (a *App) loadJob(date time.Time, name string) (job, error) {
-	st, _, err := a.store.LoadSettings()
-	if err != nil {
-		return job{}, err
-	}
-	lib, skipped, err := a.store.LoadTemplates()
-	if err != nil {
-		return job{}, err
-	}
-	outputs, err := pick(lib, name, st.DefaultOutput)
+	st, outputs, skipped, err := a.loadOutputs(name)
 	if err != nil {
 		return job{}, err
 	}
@@ -81,7 +73,66 @@ func (a *App) loadJob(date time.Time, name string) (job, error) {
 	if err != nil {
 		return job{}, err
 	}
-	return job{settings: st, outputs: outputs, day: day, skipped: errorStrings(skipped)}, nil
+	return job{settings: st, outputs: outputs, day: day, skipped: skipped}, nil
+}
+
+// loadOutputs は、設定とテンプレートを読み、name から作る出力を選ぶ。
+// skipped は、読めずに除いたテンプレートの知らせ。
+func (a *App) loadOutputs(name string) (st settings.Settings, outputs []output.Output, skipped []string, err error) {
+	st, _, err = a.store.LoadSettings()
+	if err != nil {
+		return settings.Settings{}, nil, nil, err
+	}
+	lib, skippedErrs, err := a.store.LoadTemplates()
+	if err != nil {
+		return settings.Settings{}, nil, nil, err
+	}
+	outputs, err = pick(lib, name, st.DefaultOutput)
+	if err != nil {
+		return settings.Settings{}, nil, nil, err
+	}
+	return st, outputs, errorStrings(skippedErrs), nil
+}
+
+// ExportedFile は、出力先に書いた出力 1 つのファイル。
+type ExportedFile struct {
+	// Name は出力の名前。
+	Name     string
+	FileName string
+	Exists   bool
+	// Text は、ファイルの中身。BOM を除いて NFC にそろえ、改行は書かれたまま。
+	Text string
+	// Err は読めなかった理由。読めたか、ファイルがなければ空。
+	Err string
+}
+
+// ExportedFiles は、出力または出力セットの、出力先に書いたファイル。
+type ExportedFiles struct {
+	Files []ExportedFile
+	// Skipped は、読めずに除いたテンプレートの知らせ。
+	Skipped []string
+}
+
+// ReadExported は、name (出力か出力セットの名前。空なら既定の出力) の、その日に出力先へ書いたファイルを読む。
+// 出力した後に、ユーザーが手で書き足した中身を読むためのもの。
+// ファイルの名前は書くときと同じ決まりで作り、受け取らない。出力先の外や、出力と関係のないファイルを読まないため。
+// 名前は日付と出力の定義だけで決まるので、日次ファイルは読まない。
+// ファイルがなくても、読めなくても、ほかのファイルは返す。まだ出力していない出力もあるため。
+func (a *App) ReadExported(date time.Time, name string) (ExportedFiles, error) {
+	_, outputs, skipped, err := a.loadOutputs(name)
+	if err != nil {
+		return ExportedFiles{}, err
+	}
+	result := ExportedFiles{Skipped: skipped}
+	for _, o := range outputs {
+		f := ExportedFile{Name: o.Name, FileName: o.FileName(date)}
+		f.Text, f.Exists, err = output.ReadFile(a.outputDir, f.FileName)
+		if err != nil {
+			f.Err = err.Error()
+		}
+		result.Files = append(result.Files, f)
+	}
+	return result, nil
 }
 
 // OutputDir は出力先のフォルダを返す。
